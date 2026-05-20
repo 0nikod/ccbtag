@@ -5,7 +5,19 @@ import gradio as gr
 from app.ui import events
 
 
-TABLE_HEADERS = ["index", "文件名", "状态", "Tag 状态", "NL 状态", "已保存", "错误"]
+TABLE_HEADERS = ["文件名", "状态", "Tag", "NL", "保存"]
+
+
+APP_CSS = """
+.ccbtag-shell { max-width: 1760px; margin: 0 auto; }
+.ccbtag-status textarea { min-height: 42px !important; }
+.ccbtag-section { border: 1px solid #e6e6e6; border-radius: 8px; padding: 14px; }
+.ccbtag-list table { font-size: 13px; }
+.ccbtag-list th, .ccbtag-list td { white-space: nowrap !important; }
+.ccbtag-list td:first-child { max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+.ccbtag-editor textarea { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.ccbtag-actions button { min-height: 42px; }
+"""
 
 
 def build_app() -> gr.Blocks:
@@ -13,86 +25,92 @@ def build_app() -> gr.Blocks:
         records_state = gr.State([])
         current_index = gr.State(0)
 
-        gr.Markdown("# CCBTag 图片 Caption 编辑器")
-        status = gr.Textbox(label="状态", interactive=False)
+        with gr.Column(elem_classes=["ccbtag-shell"]):
+            gr.Markdown("# CCBTag 图片 Caption 编辑器")
+            status = gr.Textbox(label="状态", interactive=False, elem_classes=["ccbtag-status"])
 
-        with gr.Row():
-            dataset_path = gr.Textbox(label="图片文件夹路径", placeholder="/path/to/dataset", scale=4)
-            metadata_location = gr.Radio(
-                label="元数据保存位置",
-                choices=["caption_json", "同目录"],
-                value="caption_json",
-                scale=1,
-            )
-            open_button = gr.Button("打开文件夹", variant="primary")
-            save_current_button = gr.Button("保存当前")
-            save_all_button = gr.Button("保存全部")
-
-        with gr.Row():
-            batch_tag_button = gr.Button("批量生成 Tag")
-            batch_nl_button = gr.Button("批量生成 NL")
-            batch_both_button = gr.Button("批量生成 Tag + NL")
-            skip_edited = gr.Checkbox(label="跳过已人工编辑图片", value=True)
-
-        with gr.Row():
-            with gr.Column(scale=2):
-                image_table = gr.Dataframe(
-                    headers=TABLE_HEADERS,
-                    datatype=["str"] * len(TABLE_HEADERS),
-                    label="图片列表",
-                    interactive=False,
-                    wrap=True,
-                )
-                prev_button = gr.Button("上一张")
-                next_button = gr.Button("下一张")
-
-            with gr.Column(scale=3):
-                preview_image = gr.Image(label="图片预览", type="filepath", height=560)
-
-            with gr.Column(scale=4):
-                tag_model = gr.Dropdown(
-                    label="Tag 模型",
-                    choices=events.tag_model_choices(),
-                    value=events.tag_model_choices()[0] if events.tag_model_choices() else None,
-                )
-                with gr.Row():
-                    generate_tag_button = gr.Button("生成 Tag")
-                    apply_rules_button = gr.Button("应用黑名单/替换规则")
-                    clear_tags_button = gr.Button("清空 Tag")
-                tags_text = gr.Textbox(label="Tags", lines=7)
-
-                nl_model = gr.Dropdown(
-                    label="描述模型",
-                    choices=events.nl_model_choices(),
-                    value=events.nl_model_choices()[0] if events.nl_model_choices() else None,
-                )
-                with gr.Accordion("NL 服务设置", open=False):
-                    nl_endpoint = gr.Textbox(
-                        label="NL 服务地址",
-                        value="http://127.0.0.1:8000/v1/chat/completions",
+            with gr.Row():
+                with gr.Column(scale=3, min_width=360, elem_classes=["ccbtag-section"]):
+                    dataset_path = gr.Textbox(label="图片文件夹路径", placeholder="/path/to/dataset")
+                    with gr.Row():
+                        metadata_location = gr.Radio(
+                            label="元数据保存位置",
+                            choices=["caption_json", "同目录"],
+                            value="caption_json",
+                            scale=2,
+                        )
+                        open_button = gr.Button("打开文件夹", variant="primary", scale=1)
+                    image_table = gr.Dataframe(
+                        headers=TABLE_HEADERS,
+                        datatype=["str"] * len(TABLE_HEADERS),
+                        label="图片列表",
+                        interactive=False,
+                        wrap=False,
+                        elem_classes=["ccbtag-list"],
                     )
-                    nl_model_name = gr.Textbox(label="NL 模型名", value="Minthy/ToriiGate-0.5")
-                    nl_api_key = gr.Textbox(label="API Key，可留空", type="password")
-                with gr.Row():
-                    generate_nl_button = gr.Button("生成 NL")
-                    generate_both_button = gr.Button("生成 Tag + NL")
-                    clear_nl_button = gr.Button("清空 NL")
-                nl_text = gr.Textbox(label="Natural Language Caption", lines=7)
+                    with gr.Row(elem_classes=["ccbtag-actions"]):
+                        prev_button = gr.Button("上一张")
+                        next_button = gr.Button("下一张")
 
-                final_caption = gr.Textbox(label="Final Caption Preview", lines=5, interactive=False)
+                with gr.Column(scale=5, min_width=420):
+                    preview_image = gr.HTML(label="图片预览", value=events.image_preview_html(None))
 
-        with gr.Accordion("批量编辑 Tags", open=False):
+                with gr.Column(scale=4, min_width=380, elem_classes=["ccbtag-section", "ccbtag-editor"]):
+                    tag_model = gr.Dropdown(
+                        label="Tag 模型",
+                        choices=events.tag_model_choices(),
+                        value=events.tag_model_choices()[0] if events.tag_model_choices() else None,
+                    )
+                    with gr.Row(elem_classes=["ccbtag-actions"]):
+                        generate_tag_button = gr.Button("生成 Tag", variant="secondary")
+                        apply_rules_button = gr.Button("应用规则")
+                        clear_tags_button = gr.Button("清空 Tag")
+                    tags_text = gr.Textbox(label="Tag", lines=7)
+
+                    nl_model = gr.Dropdown(
+                        label="描述模型",
+                        choices=events.nl_model_choices(),
+                        value=events.nl_model_choices()[0] if events.nl_model_choices() else None,
+                    )
+                    with gr.Accordion("NL 服务设置", open=False):
+                        nl_endpoint = gr.Textbox(
+                            label="NL 服务地址",
+                            value="http://127.0.0.1:8000/v1/chat/completions",
+                        )
+                        nl_model_name = gr.Textbox(label="NL 模型名", value="Minthy/ToriiGate-0.5")
+                        nl_api_key = gr.Textbox(label="API Key，可留空", type="password")
+                    with gr.Row(elem_classes=["ccbtag-actions"]):
+                        generate_nl_button = gr.Button("生成 NL", variant="secondary")
+                        generate_both_button = gr.Button("生成 Tag + NL", variant="primary")
+                        clear_nl_button = gr.Button("清空 NL")
+                    nl_text = gr.Textbox(label="自然语言描述", lines=7)
+
+                    final_caption = gr.Textbox(label="最终 Caption 预览", lines=5, interactive=False)
+                    with gr.Row(elem_classes=["ccbtag-actions"]):
+                        save_current_button = gr.Button("保存当前", variant="primary")
+                        save_all_button = gr.Button("保存全部")
+
             with gr.Row():
-                delete_tag_text = gr.Textbox(label="批量删除 Tag，逗号分隔")
-                delete_tag_button = gr.Button("批量删除")
-            with gr.Row():
-                replace_old = gr.Textbox(label="替换前")
-                replace_new = gr.Textbox(label="替换后")
-                replace_tag_button = gr.Button("批量替换")
-            with gr.Row():
-                add_tag_text = gr.Textbox(label="批量添加 Tag，逗号分隔")
-                prepend_tag = gr.Checkbox(label="前置添加", value=False)
-                add_tag_button = gr.Button("批量添加")
+                with gr.Column(scale=1, min_width=360):
+                    with gr.Accordion("批量处理", open=False):
+                        skip_edited = gr.Checkbox(label="跳过已人工编辑图片", value=True)
+                        with gr.Row(elem_classes=["ccbtag-actions"]):
+                            batch_tag_button = gr.Button("批量生成 Tag")
+                            batch_nl_button = gr.Button("批量生成 NL")
+                            batch_both_button = gr.Button("批量生成 Tag + NL")
+
+                    with gr.Accordion("批量编辑 Tag", open=False):
+                        with gr.Row():
+                            delete_tag_text = gr.Textbox(label="批量删除 Tag，逗号分隔")
+                            delete_tag_button = gr.Button("批量删除")
+                        with gr.Row():
+                            replace_old = gr.Textbox(label="替换前")
+                            replace_new = gr.Textbox(label="替换后")
+                            replace_tag_button = gr.Button("批量替换")
+                        with gr.Row():
+                            add_tag_text = gr.Textbox(label="批量添加 Tag，逗号分隔")
+                            prepend_tag = gr.Checkbox(label="前置添加", value=False)
+                            add_tag_button = gr.Button("批量添加")
 
         open_outputs = [
             records_state,

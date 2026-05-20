@@ -153,15 +153,13 @@ def save_record(record: ImageRecord, metadata_location: str = "caption_json") ->
 def table_rows(records: list[ImageRecord]) -> list[list[str]]:
     return [
         [
-            str(index),
             record.file_name,
             record.overall_status,
             record.tag_status,
             record.nl_status,
             "是" if record.saved else "否",
-            record.error,
         ]
-        for index, record in enumerate(records)
+        for record in records
     ]
 
 

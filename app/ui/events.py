@@ -21,6 +21,7 @@ from app.core.dataset import (
     table_rows,
     update_record_text,
 )
+from app.core.preview import image_preview_html
 from app.core.tag_utils import (
     add_tags,
     apply_tag_rules,
@@ -61,9 +62,9 @@ def open_folder(folder: str, metadata_location_label: str) -> tuple[Any, ...]:
     try:
         records = scan_dataset(folder, metadata_location_value(metadata_location_label))
     except Exception as exc:
-        return [], [], None, "", "", "", 0, f"打开失败: {exc}"
+        return [], [], image_preview_html(None), "", "", "", 0, f"打开失败: {exc}"
     if not records:
-        return [], [], None, "", "", "", 0, "未找到图片"
+        return [], [], image_preview_html(None), "", "", "", 0, "未找到图片"
     return _selection_payload(records, 0, "已打开图片文件夹")
 
 
@@ -71,7 +72,7 @@ def select_record(records_data: list[dict[str, Any]], event: gr.SelectData) -> t
     records = deserialize_records(records_data)
     index = _event_index(event)
     if not records:
-        return [], None, "", "", "", "没有可选择的图片"
+        return [], image_preview_html(None), "", "", "", "没有可选择的图片"
     index = min(max(index, 0), len(records) - 1)
     return _record_payload(records, index, f"当前图片: {records[index].file_name}")
 
@@ -79,7 +80,7 @@ def select_record(records_data: list[dict[str, Any]], event: gr.SelectData) -> t
 def previous_record(records_data: list[dict[str, Any]], current_index: int | None) -> tuple[Any, ...]:
     records = deserialize_records(records_data)
     if not records:
-        return None, "", "", "", 0, "没有图片"
+        return image_preview_html(None), "", "", "", 0, "没有图片"
     index = max((current_index or 0) - 1, 0)
     return _record_payload(records, index, f"当前图片: {records[index].file_name}")
 
@@ -87,7 +88,7 @@ def previous_record(records_data: list[dict[str, Any]], current_index: int | Non
 def next_record(records_data: list[dict[str, Any]], current_index: int | None) -> tuple[Any, ...]:
     records = deserialize_records(records_data)
     if not records:
-        return None, "", "", "", 0, "没有图片"
+        return image_preview_html(None), "", "", "", 0, "没有图片"
     index = min((current_index or 0) + 1, len(records) - 1)
     return _record_payload(records, index, f"当前图片: {records[index].file_name}")
 
@@ -118,7 +119,7 @@ def generate_tag(
 ) -> tuple[Any, ...]:
     records, record, index = _current_record(records_data, current_index)
     if record is None:
-        return [], [], None, "", "", "", 0, "没有当前图片"
+        return [], [], image_preview_html(None), "", "", "", 0, "没有当前图片"
     changed = split_tag_text(tags_text) != record.tags or (nl_text or "").strip() != record.nl
     update_record_text(record, tags_text, nl_text, mark_edited=changed)
     try:
@@ -146,7 +147,7 @@ def generate_nl(
 ) -> tuple[Any, ...]:
     records, record, index = _current_record(records_data, current_index)
     if record is None:
-        return [], [], None, "", "", "", 0, "没有当前图片"
+        return [], [], image_preview_html(None), "", "", "", 0, "没有当前图片"
     changed = split_tag_text(tags_text) != record.tags or (nl_text or "").strip() != record.nl
     update_record_text(record, tags_text, nl_text, mark_edited=changed)
     try:
@@ -207,7 +208,7 @@ def save_current(
 ) -> tuple[Any, ...]:
     records, record, index = _current_record(records_data, current_index)
     if record is None:
-        return [], [], None, "", "", "", 0, "没有当前图片"
+        return [], [], image_preview_html(None), "", "", "", 0, "没有当前图片"
     changed = split_tag_text(tags_text) != record.tags or (nl_text or "").strip() != record.nl
     update_record_text(record, tags_text, nl_text, mark_edited=changed)
     save_record(record, metadata_location_value(metadata_location_label))
@@ -224,7 +225,7 @@ def save_all(
 ) -> tuple[Any, ...]:
     records = deserialize_records(records_data)
     if not records:
-        return [], [], None, "", "", "", 0, "没有图片"
+        return [], [], image_preview_html(None), "", "", "", 0, "没有图片"
     index = current_index or 0
     changed = split_tag_text(tags_text) != records[index].tags or (nl_text or "").strip() != records[index].nl
     records[index] = update_record_text(records[index], tags_text, nl_text, mark_edited=changed)
@@ -241,7 +242,7 @@ def batch_generate_tags(
 ) -> tuple[Any, ...]:
     records = deserialize_records(records_data)
     if not records:
-        return [], [], None, "", "", "", 0, "没有图片"
+        return [], [], image_preview_html(None), "", "", "", 0, "没有图片"
     message = _batch_generate(records, tag_model_display, None, skip_edited, progress)
     return _selection_payload(records, 0, message)
 
@@ -257,7 +258,7 @@ def batch_generate_nl(
 ) -> tuple[Any, ...]:
     records = deserialize_records(records_data)
     if not records:
-        return [], [], None, "", "", "", 0, "没有图片"
+        return [], [], image_preview_html(None), "", "", "", 0, "没有图片"
     message = _batch_generate(
         records, None, nl_model_display, skip_edited, progress, nl_endpoint, nl_model_name, nl_api_key
     )
@@ -276,7 +277,7 @@ def batch_generate_both(
 ) -> tuple[Any, ...]:
     records = deserialize_records(records_data)
     if not records:
-        return [], [], None, "", "", "", 0, "没有图片"
+        return [], [], image_preview_html(None), "", "", "", 0, "没有图片"
     message = _batch_generate(
         records, tag_model_display, nl_model_display, skip_edited, progress, nl_endpoint, nl_model_name, nl_api_key
     )
@@ -286,7 +287,7 @@ def batch_generate_both(
 def batch_delete_tag(records_data: list[dict[str, Any]], delete_text: str) -> tuple[Any, ...]:
     records = deserialize_records(records_data)
     if not records:
-        return [], [], None, "", "", "", 0, "没有图片"
+        return [], [], image_preview_html(None), "", "", "", 0, "没有图片"
     for record in records:
         record.tags = split_tag_text(delete_tags(tag_text(record.tags), delete_text, TAG_RULES))
         record.tag_status = EDITED if record.tags else EMPTY
@@ -298,7 +299,7 @@ def batch_delete_tag(records_data: list[dict[str, Any]], delete_text: str) -> tu
 def batch_replace_tag(records_data: list[dict[str, Any]], old: str, new: str) -> tuple[Any, ...]:
     records = deserialize_records(records_data)
     if not records:
-        return [], [], None, "", "", "", 0, "没有图片"
+        return [], [], image_preview_html(None), "", "", "", 0, "没有图片"
     for record in records:
         record.tags = split_tag_text(replace_tags(tag_text(record.tags), old, new, TAG_RULES))
         record.tag_status = EDITED if record.tags else EMPTY
@@ -377,7 +378,7 @@ def _selection_payload(records: list[ImageRecord], index: int, message: str) -> 
     return (
         serialize_records(records),
         table_rows(records),
-        str(Path(records[index].image_path)),
+        image_preview_html(records[index].image_path),
         tag_text(records[index].tags),
         records[index].nl,
         records[index].final_caption,
@@ -389,7 +390,7 @@ def _selection_payload(records: list[ImageRecord], index: int, message: str) -> 
 def _record_payload(records: list[ImageRecord], index: int, message: str) -> tuple[Any, ...]:
     record = records[index]
     return (
-        str(Path(record.image_path)),
+        image_preview_html(record.image_path),
         tag_text(record.tags),
         record.nl,
         record.final_caption,
