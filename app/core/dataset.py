@@ -37,8 +37,11 @@ class ImageRecord:
     nl: str = ""
     tag_status: str = EMPTY
     nl_status: str = EMPTY
+    tag_manual: bool = False
+    nl_manual: bool = False
     edited: bool = False
     saved: bool = False
+    dirty: bool = False
     error: str = ""
 
     @property
@@ -49,6 +52,8 @@ class ImageRecord:
     def overall_status(self) -> str:
         if self.error or self.tag_status == ERROR or self.nl_status == ERROR:
             return "失败"
+        if self.dirty:
+            return "未保存"
         if self.saved:
             return "已保存"
         if self.edited:
@@ -64,23 +69,51 @@ class ImageRecord:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "ImageRecord":
-        return cls(**data)
+        payload = dict(data)
+        tags = payload.get("tags", [])
+        nl = str(payload.get("nl", "") or "")
+        tag_manual = payload.get("tag_manual")
+        nl_manual = payload.get("nl_manual")
+        edited = bool(payload.get("edited", False))
+
+        if tag_manual is None:
+            tag_manual = payload.get("tag_status") == EDITED or (edited and bool(tags))
+        if nl_manual is None:
+            nl_manual = payload.get("nl_status") == EDITED or (edited and bool(nl.strip()))
+
+        payload["tag_manual"] = bool(tag_manual)
+        payload["nl_manual"] = bool(nl_manual)
+        payload["edited"] = bool(payload["tag_manual"] or payload["nl_manual"])
+        payload["dirty"] = bool(payload.get("dirty", False))
+        return cls(**payload)
+
+
+@dataclass(frozen=True)
+class PersistedRecordState:
+    parts: CaptionParts
+    tag_manual: bool = False
+    nl_manual: bool = False
+    has_metadata: bool = False
 
 
 def record_from_image(image_path: Path, metadata_location: str = "caption_json") -> ImageRecord:
     txt_path = txt_path_for_image(image_path)
     metadata_path = metadata_path_for_image(image_path, metadata_location)
-    parts = _load_caption_parts(image_path, metadata_location)
+    state = _load_record_state(image_path, metadata_location)
+    edited = state.tag_manual or state.nl_manual
     return ImageRecord(
         image_path=str(image_path),
         txt_path=str(txt_path),
         metadata_path=str(metadata_path),
         file_name=image_path.name,
-        tags=parts.tags,
-        nl=parts.nl,
-        tag_status=GENERATED if parts.tags else EMPTY,
-        nl_status=GENERATED if parts.nl else EMPTY,
-        saved=bool(txt_path.exists()),
+        tags=state.parts.tags,
+        nl=state.parts.nl,
+        tag_status=_status_for_content(bool(state.parts.tags), state.tag_manual),
+        nl_status=_status_for_content(bool(state.parts.nl), state.nl_manual),
+        tag_manual=state.tag_manual,
+        nl_manual=state.nl_manual,
+        edited=edited,
+        saved=bool(txt_path.exists()) or state.has_metadata,
     )
 
 
@@ -105,20 +138,27 @@ def update_record_text(
     record.tags = new_tags
     record.nl = new_nl
 
-    if not record.tags:
+    if tag_changed:
+        record.tag_manual = True
+        record.tag_details = []
+        record.tag_status = _status_for_content(bool(record.tags), record.tag_manual)
+    elif not record.tags:
         record.tag_status = EMPTY
         record.tag_details = []
-    elif tag_changed:
-        record.tag_status = EDITED
-        record.tag_details = []
+    elif record.tag_status != ERROR:
+        record.tag_status = _status_for_content(True, record.tag_manual)
 
-    if not record.nl:
+    if nl_changed:
+        record.nl_manual = True
+        record.nl_status = _status_for_content(bool(record.nl), record.nl_manual)
+    elif not record.nl:
         record.nl_status = EMPTY
-    elif nl_changed:
-        record.nl_status = EDITED
+    elif record.nl_status != ERROR:
+        record.nl_status = _status_for_content(True, record.nl_manual)
 
     if tag_changed or nl_changed:
         record.saved = False
+        record.dirty = True
         record.error = ""
     record.edited = _has_manual_edits(record)
     return record
@@ -131,8 +171,10 @@ def set_generated_tags(
 ) -> ImageRecord:
     record.tags = list(tags)
     record.tag_details = details or []
-    record.tag_status = GENERATED if record.tags else EMPTY
+    record.tag_manual = False
+    record.tag_status = _status_for_content(bool(record.tags), record.tag_manual)
     record.saved = False
+    record.dirty = True
     record.error = ""
     record.edited = _has_manual_edits(record)
     return record
@@ -140,8 +182,10 @@ def set_generated_tags(
 
 def set_generated_nl(record: ImageRecord, nl: str) -> ImageRecord:
     record.nl = (nl or "").strip()
-    record.nl_status = GENERATED if record.nl else EMPTY
+    record.nl_manual = False
+    record.nl_status = _status_for_content(bool(record.nl), record.nl_manual)
     record.saved = False
+    record.dirty = True
     record.error = ""
     record.edited = _has_manual_edits(record)
     return record
@@ -158,12 +202,14 @@ def set_error(record: ImageRecord, message: str, task: str | None = None) -> Ima
 
 def save_record(record: ImageRecord, metadata_location: str = "caption_json") -> ImageRecord:
     image_path = Path(record.image_path)
+    _backfill_manual_flags(record)
     record.txt_path = str(txt_path_for_image(image_path))
     record.metadata_path = str(metadata_path_for_image(image_path, metadata_location))
     final_caption = record.final_caption
     write_text(Path(record.txt_path), final_caption)
     write_json(Path(record.metadata_path), _metadata_payload(record, final_caption))
     record.saved = True
+    record.dirty = False
     record.error = ""
     return record
 
@@ -191,12 +237,12 @@ def deserialize_records(data: list[dict[str, Any]] | None) -> list[ImageRecord]:
     return [ImageRecord.from_dict(item) for item in (data or [])]
 
 
-def _load_caption_parts(image_path: Path, metadata_location: str) -> CaptionParts:
+def _load_record_state(image_path: Path, metadata_location: str) -> PersistedRecordState:
     for candidate in metadata_candidates(image_path, metadata_location):
         metadata = read_json(candidate)
         if metadata:
-            return _parts_from_metadata(metadata)
-    return parse_caption_text(read_text(txt_path_for_image(image_path)))
+            return _state_from_metadata(metadata)
+    return PersistedRecordState(parts=parse_caption_text(read_text(txt_path_for_image(image_path))))
 
 
 def _parts_from_metadata(metadata: dict[str, Any]) -> CaptionParts:
@@ -216,6 +262,35 @@ def _parts_from_metadata(metadata: dict[str, Any]) -> CaptionParts:
     else:
         nl = str(raw_nl)
     return CaptionParts(tags=split_tag_text(tags), nl=nl.strip())
+
+
+def _state_from_metadata(metadata: dict[str, Any]) -> PersistedRecordState:
+    parts = _parts_from_metadata(metadata)
+    raw_tags = metadata.get("tags", [])
+    raw_nl = metadata.get("nl", {})
+    edited = bool(metadata.get("edited", False))
+
+    if "tag_manual" in metadata:
+        tag_manual = bool(metadata.get("tag_manual"))
+    else:
+        tag_manual = any(
+            isinstance(item, dict) and str(item.get("source", "")).strip().lower() == "manual"
+            for item in (raw_tags if isinstance(raw_tags, list) else [])
+        ) or (edited and bool(parts.tags))
+
+    if "nl_manual" in metadata:
+        nl_manual = bool(metadata.get("nl_manual"))
+    elif isinstance(raw_nl, dict):
+        nl_manual = str(raw_nl.get("source", "")).strip().lower() == "manual" or (edited and bool(parts.nl))
+    else:
+        nl_manual = edited and bool(parts.nl)
+
+    return PersistedRecordState(
+        parts=parts,
+        tag_manual=tag_manual,
+        nl_manual=nl_manual,
+        has_metadata=True,
+    )
 
 
 def _metadata_payload(record: ImageRecord, final_caption: str) -> dict[str, Any]:
@@ -244,9 +319,27 @@ def _metadata_payload(record: ImageRecord, final_caption: str) -> dict[str, Any]
             "source": "manual" if record.nl_status == EDITED else "model",
         },
         "final_caption": final_caption,
+        "tag_manual": record.tag_manual,
+        "nl_manual": record.nl_manual,
         "edited": record.edited,
     }
 
 
 def _has_manual_edits(record: ImageRecord) -> bool:
-    return record.tag_status == EDITED or record.nl_status == EDITED
+    return record.tag_manual or record.nl_manual
+
+
+def _status_for_content(has_content: bool, manual: bool) -> str:
+    if not has_content:
+        return EMPTY
+    return EDITED if manual else GENERATED
+
+
+def _backfill_manual_flags(record: ImageRecord) -> None:
+    """Keep old state payloads that only set `*_status=edited` compatible."""
+
+    if record.tag_status == EDITED:
+        record.tag_manual = True
+    if record.nl_status == EDITED:
+        record.nl_manual = True
+    record.edited = _has_manual_edits(record)

@@ -74,14 +74,3 @@ caption_json/image.caption.json
 ```text
 image.caption.json
 ```
-
-## 当前 Git 环境说明
-
-当前工作区存在一个只读 `.git` 占位目录，普通 `git status` 会失败。
-本项目实际 Git 元数据初始化在 `.repo-git` 中。此环境下使用：
-
-```bash
-git --git-dir=.repo-git --work-tree=. status
-```
-
-如果后续移除了只读 `.git` 占位，可以把仓库迁回标准 Git 布局。

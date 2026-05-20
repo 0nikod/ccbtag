@@ -87,7 +87,7 @@ def _select_record(
 ) -> tuple[Any, ...]:
     records = deserialize_records(records_data)
     if not records:
-        return [], image_preview_html(None), "", "", "", "没有可选择的图片"
+        return [], image_preview_html(None), "", "", "", 0, "没有可选择的图片"
     _sync_current_form(records, current_index, tags_text, nl_text)
     index = _clamp_index(records, target_index)
     return _record_payload(records, index, f"当前图片: {records[index].file_name}")
@@ -101,7 +101,7 @@ def previous_record(
 ) -> tuple[Any, ...]:
     records = deserialize_records(records_data)
     if not records:
-        return image_preview_html(None), "", "", "", 0, "没有图片"
+        return [], image_preview_html(None), "", "", "", 0, "没有图片"
     current = _sync_current_form(records, current_index, tags_text, nl_text)
     index = max(current - 1, 0)
     return _record_payload(records, index, f"当前图片: {records[index].file_name}")
@@ -115,7 +115,7 @@ def next_record(
 ) -> tuple[Any, ...]:
     records = deserialize_records(records_data)
     if not records:
-        return image_preview_html(None), "", "", "", 0, "没有图片"
+        return [], image_preview_html(None), "", "", "", 0, "没有图片"
     current = _sync_current_form(records, current_index, tags_text, nl_text)
     index = min(current + 1, len(records) - 1)
     return _record_payload(records, index, f"当前图片: {records[index].file_name}")
@@ -331,10 +331,8 @@ def batch_delete_tag(
         return [], [], image_preview_html(None), "", "", "", 0, "没有图片"
     index = _sync_current_form(records, current_index, tags_text, nl_text)
     for record in records:
-        record.tags = split_tag_text(delete_tags(tag_text(record.tags), delete_text, TAG_RULES))
-        record.tag_status = EDITED if record.tags else EMPTY
-        record.edited = True
-        record.saved = False
+        next_tags = delete_tags(tag_text(record.tags), delete_text, TAG_RULES)
+        update_record_text(record, next_tags, record.nl)
     return _selection_payload(records, index, "批量删除 Tag 完成")
 
 
@@ -351,10 +349,8 @@ def batch_replace_tag(
         return [], [], image_preview_html(None), "", "", "", 0, "没有图片"
     index = _sync_current_form(records, current_index, tags_text, nl_text)
     for record in records:
-        record.tags = split_tag_text(replace_tags(tag_text(record.tags), old, new, TAG_RULES))
-        record.tag_status = EDITED if record.tags else EMPTY
-        record.edited = True
-        record.saved = False
+        next_tags = replace_tags(tag_text(record.tags), old, new, TAG_RULES)
+        update_record_text(record, next_tags, record.nl)
     return _selection_payload(records, index, "批量替换 Tag 完成")
 
 
@@ -371,10 +367,8 @@ def batch_add_tag(
         return [], [], image_preview_html(None), "", "", "", 0, "没有图片"
     index = _sync_current_form(records, current_index, tags_text, nl_text)
     for record in records:
-        record.tags = split_tag_text(add_tags(tag_text(record.tags), add_text, TAG_RULES, prepend=prepend))
-        record.tag_status = EDITED if record.tags else EMPTY
-        record.edited = True
-        record.saved = False
+        next_tags = add_tags(tag_text(record.tags), add_text, TAG_RULES, prepend=prepend)
+        update_record_text(record, next_tags, record.nl)
     return _selection_payload(records, index, "批量添加 Tag 完成")
 
 

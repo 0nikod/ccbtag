@@ -75,6 +75,8 @@ class DatasetTest(unittest.TestCase):
 
             metadata = json.loads((root / "caption_json" / "0001.caption.json").read_text(encoding="utf-8"))
             self.assertEqual(metadata["tags"], [{"name": "solo", "score": None, "source": "manual"}])
+            self.assertTrue(metadata["tag_manual"])
+            self.assertFalse(metadata["nl_manual"])
 
     def test_update_record_text_marks_only_changed_section(self) -> None:
         record = ImageRecord(
@@ -93,6 +95,10 @@ class DatasetTest(unittest.TestCase):
         self.assertEqual(record.tag_status, GENERATED)
         self.assertEqual(record.nl_status, "edited")
         self.assertTrue(record.edited)
+        self.assertTrue(record.nl_manual)
+        self.assertFalse(record.tag_manual)
+        self.assertTrue(record.dirty)
+        self.assertEqual(record.overall_status, "未保存")
 
     def test_model_regeneration_clears_manual_flag_when_no_manual_section_remains(self) -> None:
         record = ImageRecord(
@@ -113,6 +119,9 @@ class DatasetTest(unittest.TestCase):
         self.assertEqual(record.tag_status, GENERATED)
         self.assertEqual(record.nl_status, GENERATED)
         self.assertFalse(record.edited)
+        self.assertFalse(record.tag_manual)
+        self.assertFalse(record.nl_manual)
+        self.assertTrue(record.dirty)
 
     def test_table_rows_match_ui_columns(self) -> None:
         record = ImageRecord(
@@ -125,6 +134,28 @@ class DatasetTest(unittest.TestCase):
         rows = table_rows([record])
 
         self.assertEqual(rows, [["0", "a.png", "未处理", "empty", "empty", "否", ""]])
+
+    def test_reload_preserves_manual_clear_flags_from_metadata(self) -> None:
+        from tempfile import TemporaryDirectory
+
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            image_path = root / "0001.png"
+            write_image(image_path)
+            record = scan_dataset(root)[0]
+            record.tags = ["solo"]
+            record.tag_status = GENERATED
+
+            update_record_text(record, "", "")
+            save_record(record, "caption_json")
+
+            reopened = scan_dataset(root)[0]
+
+            self.assertEqual(reopened.tags, [])
+            self.assertEqual(reopened.tag_status, "empty")
+            self.assertTrue(reopened.edited)
+            self.assertTrue(reopened.tag_manual)
+            self.assertFalse(reopened.dirty)
 
 
 if __name__ == "__main__":

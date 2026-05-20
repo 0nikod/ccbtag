@@ -69,6 +69,7 @@ def test_select_record_persists_unsaved_current_form(tmp_path: Path) -> None:
     assert updated[0].tags == ["1girl", "solo"]
     assert updated[0].nl == "A girl is standing."
     assert updated[0].edited is True
+    assert updated[0].dirty is True
     assert payload[3] == ""
     assert payload[4] == ""
 
@@ -91,5 +92,7 @@ def test_batch_generate_tags_skips_current_unsaved_manual_edit(tmp_path: Path, m
     updated = deserialize_records(payload[0])
     assert updated[0].tags == ["manual tag"]
     assert updated[0].tag_status == "edited"
+    assert updated[0].tag_manual is True
     assert updated[1].tags == ["0002-generated"]
+    assert updated[1].dirty is True
     assert payload[6] == 0
