@@ -1,0 +1,17 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Local runtime/model data.
+/models/
+datasets/
+caption_json/
+
+# This environment contains a read-only .git placeholder. The real Git
+# metadata for this workspace is initialized in .repo-git.
+.write-test

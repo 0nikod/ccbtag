@@ -1,0 +1,1 @@
+"""CCBTag application package."""

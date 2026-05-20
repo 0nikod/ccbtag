@@ -1,0 +1,36 @@
+{
+  "models": [
+    {
+      "id": "pixai_tagger_v0_9",
+      "display_name": "PixAI Tagger v0.9",
+      "task": "tag",
+      "source": "local",
+      "backend": "onnx",
+      "model_path": "deepghs/pixai-tagger-v0.9-onnx",
+      "model_name": "v0.9",
+      "entry": "PixaiOnnxTagger"
+    },
+    {
+      "id": "cl_tagger_1_02",
+      "display_name": "CL Tagger 1.02",
+      "task": "tag",
+      "source": "local",
+      "backend": "onnx",
+      "model_path": "cella110n/cl_tagger",
+      "model_name": "cl_tagger_1_02",
+      "entry": "CLTaggerOnnx"
+    },
+    {
+      "id": "toriigate_0_5",
+      "display_name": "ToriiGate 0.5",
+      "task": "nl",
+      "source": "external",
+      "backend": "openai_compatible_http",
+      "model_path": "Minthy/ToriiGate-0.5",
+      "endpoint_env": "CCBTAG_NL_ENDPOINT",
+      "model_env": "CCBTAG_NL_MODEL",
+      "api_key_env": "CCBTAG_NL_API_KEY",
+      "entry": "ToriiGateHttpCaptioner"
+    }
+  ]
+}
