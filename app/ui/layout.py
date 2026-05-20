@@ -122,7 +122,7 @@ def build_app() -> gr.Blocks:
             current_index,
             status,
         ]
-        record_outputs = [preview_image, tags_text, nl_text, final_caption, current_index, status]
+        record_outputs = [records_state, preview_image, tags_text, nl_text, final_caption, current_index, status]
         edit_outputs = [tags_text, final_caption]
 
         open_button.click(
@@ -132,17 +132,17 @@ def build_app() -> gr.Blocks:
         )
         image_table.select(
             events.select_record,
-            inputs=[records_state],
+            inputs=[records_state, current_index, tags_text, nl_text],
             outputs=record_outputs,
         )
         prev_button.click(
             events.previous_record,
-            inputs=[records_state, current_index],
+            inputs=[records_state, current_index, tags_text, nl_text],
             outputs=record_outputs,
         )
         next_button.click(
             events.next_record,
-            inputs=[records_state, current_index],
+            inputs=[records_state, current_index, tags_text, nl_text],
             outputs=record_outputs,
         )
         tags_text.change(events.preview_caption, inputs=[tags_text, nl_text], outputs=final_caption)
@@ -189,28 +189,43 @@ def build_app() -> gr.Blocks:
 
         batch_tag_button.click(
             events.batch_generate_tags,
-            inputs=[records_state, tag_model, skip_edited],
+            inputs=[records_state, current_index, tags_text, nl_text, tag_model, skip_edited],
             outputs=open_outputs,
         )
         batch_nl_button.click(
             events.batch_generate_nl,
-            inputs=[records_state, nl_model, nl_endpoint, nl_model_name, nl_api_key, skip_edited],
+            inputs=[records_state, current_index, tags_text, nl_text, nl_model, nl_endpoint, nl_model_name, nl_api_key, skip_edited],
             outputs=open_outputs,
         )
         batch_both_button.click(
             events.batch_generate_both,
-            inputs=[records_state, tag_model, nl_model, nl_endpoint, nl_model_name, nl_api_key, skip_edited],
+            inputs=[
+                records_state,
+                current_index,
+                tags_text,
+                nl_text,
+                tag_model,
+                nl_model,
+                nl_endpoint,
+                nl_model_name,
+                nl_api_key,
+                skip_edited,
+            ],
             outputs=open_outputs,
         )
-        delete_tag_button.click(events.batch_delete_tag, inputs=[records_state, delete_tag_text], outputs=open_outputs)
+        delete_tag_button.click(
+            events.batch_delete_tag,
+            inputs=[records_state, current_index, tags_text, nl_text, delete_tag_text],
+            outputs=open_outputs,
+        )
         replace_tag_button.click(
             events.batch_replace_tag,
-            inputs=[records_state, replace_old, replace_new],
+            inputs=[records_state, current_index, tags_text, nl_text, replace_old, replace_new],
             outputs=open_outputs,
         )
         add_tag_button.click(
             events.batch_add_tag,
-            inputs=[records_state, add_tag_text, prepend_tag],
+            inputs=[records_state, current_index, tags_text, nl_text, add_tag_text, prepend_tag],
             outputs=open_outputs,
         )
 

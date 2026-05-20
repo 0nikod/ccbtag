@@ -2,7 +2,16 @@ import base64
 import unittest
 from pathlib import Path
 
-from app.core.dataset import scan_dataset, save_record
+from app.core.dataset import (
+    GENERATED,
+    ImageRecord,
+    save_record,
+    scan_dataset,
+    set_generated_nl,
+    set_generated_tags,
+    table_rows,
+    update_record_text,
+)
 
 
 def write_image(path: Path) -> None:
@@ -66,6 +75,56 @@ class DatasetTest(unittest.TestCase):
 
             metadata = json.loads((root / "caption_json" / "0001.caption.json").read_text(encoding="utf-8"))
             self.assertEqual(metadata["tags"], [{"name": "solo", "score": None, "source": "manual"}])
+
+    def test_update_record_text_marks_only_changed_section(self) -> None:
+        record = ImageRecord(
+            image_path="a.png",
+            txt_path="a.txt",
+            metadata_path="a.caption.json",
+            file_name="a.png",
+            tags=["1girl"],
+            nl="A girl is standing.",
+            tag_status=GENERATED,
+            nl_status=GENERATED,
+        )
+
+        update_record_text(record, "1girl", "A girl is sitting.")
+
+        self.assertEqual(record.tag_status, GENERATED)
+        self.assertEqual(record.nl_status, "edited")
+        self.assertTrue(record.edited)
+
+    def test_model_regeneration_clears_manual_flag_when_no_manual_section_remains(self) -> None:
+        record = ImageRecord(
+            image_path="a.png",
+            txt_path="a.txt",
+            metadata_path="a.caption.json",
+            file_name="a.png",
+            tags=["1girl"],
+            nl="A girl is standing.",
+            tag_status="edited",
+            nl_status="edited",
+            edited=True,
+        )
+
+        set_generated_tags(record, ["solo"], [{"name": "solo", "score": 0.9, "source": "model"}])
+        set_generated_nl(record, "A girl is sitting.")
+
+        self.assertEqual(record.tag_status, GENERATED)
+        self.assertEqual(record.nl_status, GENERATED)
+        self.assertFalse(record.edited)
+
+    def test_table_rows_match_ui_columns(self) -> None:
+        record = ImageRecord(
+            image_path="a.png",
+            txt_path="a.txt",
+            metadata_path="a.caption.json",
+            file_name="a.png",
+        )
+
+        rows = table_rows([record])
+
+        self.assertEqual(rows, [["0", "a.png", "未处理", "empty", "empty", "否", ""]])
 
 
 if __name__ == "__main__":

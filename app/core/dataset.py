@@ -96,15 +96,31 @@ def update_record_text(
     record: ImageRecord,
     tags_text: str,
     nl_text: str,
-    mark_edited: bool = True,
 ) -> ImageRecord:
-    record.tags = split_tag_text(tags_text)
-    record.nl = (nl_text or "").strip()
-    record.tag_status = EDITED if record.tags and mark_edited else (record.tag_status if record.tags else EMPTY)
-    record.nl_status = EDITED if record.nl and mark_edited else (record.nl_status if record.nl else EMPTY)
-    record.edited = record.edited or mark_edited
-    record.saved = False
-    record.error = ""
+    new_tags = split_tag_text(tags_text)
+    new_nl = (nl_text or "").strip()
+    tag_changed = new_tags != record.tags
+    nl_changed = new_nl != record.nl
+
+    record.tags = new_tags
+    record.nl = new_nl
+
+    if not record.tags:
+        record.tag_status = EMPTY
+        record.tag_details = []
+    elif tag_changed:
+        record.tag_status = EDITED
+        record.tag_details = []
+
+    if not record.nl:
+        record.nl_status = EMPTY
+    elif nl_changed:
+        record.nl_status = EDITED
+
+    if tag_changed or nl_changed:
+        record.saved = False
+        record.error = ""
+    record.edited = _has_manual_edits(record)
     return record
 
 
@@ -118,6 +134,7 @@ def set_generated_tags(
     record.tag_status = GENERATED if record.tags else EMPTY
     record.saved = False
     record.error = ""
+    record.edited = _has_manual_edits(record)
     return record
 
 
@@ -126,6 +143,7 @@ def set_generated_nl(record: ImageRecord, nl: str) -> ImageRecord:
     record.nl_status = GENERATED if record.nl else EMPTY
     record.saved = False
     record.error = ""
+    record.edited = _has_manual_edits(record)
     return record
 
 
@@ -153,13 +171,15 @@ def save_record(record: ImageRecord, metadata_location: str = "caption_json") ->
 def table_rows(records: list[ImageRecord]) -> list[list[str]]:
     return [
         [
+            str(index),
             record.file_name,
             record.overall_status,
             record.tag_status,
             record.nl_status,
             "是" if record.saved else "否",
+            record.error,
         ]
-        for record in records
+        for index, record in enumerate(records)
     ]
 
 
@@ -226,3 +246,7 @@ def _metadata_payload(record: ImageRecord, final_caption: str) -> dict[str, Any]
         "final_caption": final_caption,
         "edited": record.edited,
     }
+
+
+def _has_manual_edits(record: ImageRecord) -> bool:
+    return record.tag_status == EDITED or record.nl_status == EDITED

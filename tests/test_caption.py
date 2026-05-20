@@ -19,6 +19,11 @@ class CaptionTest(unittest.TestCase):
         self.assertEqual(parts.tags, ["1girl", "solo"])
         self.assertEqual(parts.nl, "A girl is standing.")
 
+    def test_parse_caption_text_keeps_sentence_as_nl(self) -> None:
+        parts = parse_caption_text("A girl is standing.")
+        self.assertEqual(parts.tags, [])
+        self.assertEqual(parts.nl, "A girl is standing.")
+
     def test_split_tag_text_ignores_empty_items(self) -> None:
         self.assertEqual(split_tag_text("1girl, , solo,"), ["1girl", "solo"])
 

@@ -78,6 +78,17 @@ def parse_caption_text(text: str | None) -> CaptionParts:
     if not normalized:
         return CaptionParts(tags=[], nl="")
     if "." not in normalized:
-        return CaptionParts(tags=split_tag_text(normalized), nl="")
+        if "," in normalized or " " not in normalized:
+            return CaptionParts(tags=split_tag_text(normalized), nl="")
+        return CaptionParts(tags=[], nl=clean_nl_text(normalized))
     tag_part, nl_part = normalized.split(".", 1)
-    return CaptionParts(tags=split_tag_text(tag_part), nl=clean_nl_text(nl_part))
+    if _looks_like_tag_block(tag_part):
+        return CaptionParts(tags=split_tag_text(tag_part), nl=clean_nl_text(nl_part))
+    return CaptionParts(tags=[], nl=clean_nl_text(normalized))
+
+
+def _looks_like_tag_block(value: str) -> bool:
+    normalized = value.strip()
+    if not normalized:
+        return False
+    return "," in normalized or " " not in normalized

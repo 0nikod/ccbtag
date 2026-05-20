@@ -68,28 +68,56 @@ def open_folder(folder: str, metadata_location_label: str) -> tuple[Any, ...]:
     return _selection_payload(records, 0, "已打开图片文件夹")
 
 
-def select_record(records_data: list[dict[str, Any]], event: gr.SelectData) -> tuple[Any, ...]:
+def select_record(
+    records_data: list[dict[str, Any]],
+    current_index: int | None,
+    tags_text: str,
+    nl_text: str,
+    event: gr.SelectData,
+) -> tuple[Any, ...]:
+    return _select_record(records_data, current_index, tags_text, nl_text, _event_index(event))
+
+
+def _select_record(
+    records_data: list[dict[str, Any]],
+    current_index: int | None,
+    tags_text: str,
+    nl_text: str,
+    target_index: int,
+) -> tuple[Any, ...]:
     records = deserialize_records(records_data)
-    index = _event_index(event)
     if not records:
         return [], image_preview_html(None), "", "", "", "没有可选择的图片"
-    index = min(max(index, 0), len(records) - 1)
+    _sync_current_form(records, current_index, tags_text, nl_text)
+    index = _clamp_index(records, target_index)
     return _record_payload(records, index, f"当前图片: {records[index].file_name}")
 
 
-def previous_record(records_data: list[dict[str, Any]], current_index: int | None) -> tuple[Any, ...]:
+def previous_record(
+    records_data: list[dict[str, Any]],
+    current_index: int | None,
+    tags_text: str,
+    nl_text: str,
+) -> tuple[Any, ...]:
     records = deserialize_records(records_data)
     if not records:
         return image_preview_html(None), "", "", "", 0, "没有图片"
-    index = max((current_index or 0) - 1, 0)
+    current = _sync_current_form(records, current_index, tags_text, nl_text)
+    index = max(current - 1, 0)
     return _record_payload(records, index, f"当前图片: {records[index].file_name}")
 
 
-def next_record(records_data: list[dict[str, Any]], current_index: int | None) -> tuple[Any, ...]:
+def next_record(
+    records_data: list[dict[str, Any]],
+    current_index: int | None,
+    tags_text: str,
+    nl_text: str,
+) -> tuple[Any, ...]:
     records = deserialize_records(records_data)
     if not records:
         return image_preview_html(None), "", "", "", 0, "没有图片"
-    index = min((current_index or 0) + 1, len(records) - 1)
+    current = _sync_current_form(records, current_index, tags_text, nl_text)
+    index = min(current + 1, len(records) - 1)
     return _record_payload(records, index, f"当前图片: {records[index].file_name}")
 
 
@@ -120,8 +148,7 @@ def generate_tag(
     records, record, index = _current_record(records_data, current_index)
     if record is None:
         return [], [], image_preview_html(None), "", "", "", 0, "没有当前图片"
-    changed = split_tag_text(tags_text) != record.tags or (nl_text or "").strip() != record.nl
-    update_record_text(record, tags_text, nl_text, mark_edited=changed)
+    update_record_text(record, tags_text, nl_text)
     try:
         model = REGISTRY.get_by_display("tag", tag_model_display)
         predictions = [item.to_dict() for item in model.predict(record.image_path, threshold=TAG_RULES.threshold)]
@@ -148,8 +175,7 @@ def generate_nl(
     records, record, index = _current_record(records_data, current_index)
     if record is None:
         return [], [], image_preview_html(None), "", "", "", 0, "没有当前图片"
-    changed = split_tag_text(tags_text) != record.tags or (nl_text or "").strip() != record.nl
-    update_record_text(record, tags_text, nl_text, mark_edited=changed)
+    update_record_text(record, tags_text, nl_text)
     try:
         model = REGISTRY.get_by_display("nl", nl_model_display)
         nl_rules = RULES.get("nl", {})
@@ -209,8 +235,7 @@ def save_current(
     records, record, index = _current_record(records_data, current_index)
     if record is None:
         return [], [], image_preview_html(None), "", "", "", 0, "没有当前图片"
-    changed = split_tag_text(tags_text) != record.tags or (nl_text or "").strip() != record.nl
-    update_record_text(record, tags_text, nl_text, mark_edited=changed)
+    update_record_text(record, tags_text, nl_text)
     save_record(record, metadata_location_value(metadata_location_label))
     records[index] = record
     return _selection_payload(records, index, f"已保存: {record.file_name}")
@@ -226,9 +251,7 @@ def save_all(
     records = deserialize_records(records_data)
     if not records:
         return [], [], image_preview_html(None), "", "", "", 0, "没有图片"
-    index = current_index or 0
-    changed = split_tag_text(tags_text) != records[index].tags or (nl_text or "").strip() != records[index].nl
-    records[index] = update_record_text(records[index], tags_text, nl_text, mark_edited=changed)
+    index = _sync_current_form(records, current_index, tags_text, nl_text)
     for record in records:
         save_record(record, metadata_location_value(metadata_location_label))
     return _selection_payload(records, index, f"已保存全部: {len(records)} 张")
@@ -236,6 +259,9 @@ def save_all(
 
 def batch_generate_tags(
     records_data: list[dict[str, Any]],
+    current_index: int | None,
+    tags_text: str,
+    nl_text: str,
     tag_model_display: str,
     skip_edited: bool,
     progress: gr.Progress = gr.Progress(),
@@ -243,12 +269,16 @@ def batch_generate_tags(
     records = deserialize_records(records_data)
     if not records:
         return [], [], image_preview_html(None), "", "", "", 0, "没有图片"
+    index = _sync_current_form(records, current_index, tags_text, nl_text)
     message = _batch_generate(records, tag_model_display, None, skip_edited, progress)
-    return _selection_payload(records, 0, message)
+    return _selection_payload(records, index, message)
 
 
 def batch_generate_nl(
     records_data: list[dict[str, Any]],
+    current_index: int | None,
+    tags_text: str,
+    nl_text: str,
     nl_model_display: str,
     nl_endpoint: str,
     nl_model_name: str,
@@ -259,14 +289,18 @@ def batch_generate_nl(
     records = deserialize_records(records_data)
     if not records:
         return [], [], image_preview_html(None), "", "", "", 0, "没有图片"
+    index = _sync_current_form(records, current_index, tags_text, nl_text)
     message = _batch_generate(
         records, None, nl_model_display, skip_edited, progress, nl_endpoint, nl_model_name, nl_api_key
     )
-    return _selection_payload(records, 0, message)
+    return _selection_payload(records, index, message)
 
 
 def batch_generate_both(
     records_data: list[dict[str, Any]],
+    current_index: int | None,
+    tags_text: str,
+    nl_text: str,
     tag_model_display: str,
     nl_model_display: str,
     nl_endpoint: str,
@@ -278,46 +312,70 @@ def batch_generate_both(
     records = deserialize_records(records_data)
     if not records:
         return [], [], image_preview_html(None), "", "", "", 0, "没有图片"
+    index = _sync_current_form(records, current_index, tags_text, nl_text)
     message = _batch_generate(
         records, tag_model_display, nl_model_display, skip_edited, progress, nl_endpoint, nl_model_name, nl_api_key
     )
-    return _selection_payload(records, 0, message)
+    return _selection_payload(records, index, message)
 
 
-def batch_delete_tag(records_data: list[dict[str, Any]], delete_text: str) -> tuple[Any, ...]:
+def batch_delete_tag(
+    records_data: list[dict[str, Any]],
+    current_index: int | None,
+    tags_text: str,
+    nl_text: str,
+    delete_text: str,
+) -> tuple[Any, ...]:
     records = deserialize_records(records_data)
     if not records:
         return [], [], image_preview_html(None), "", "", "", 0, "没有图片"
+    index = _sync_current_form(records, current_index, tags_text, nl_text)
     for record in records:
         record.tags = split_tag_text(delete_tags(tag_text(record.tags), delete_text, TAG_RULES))
         record.tag_status = EDITED if record.tags else EMPTY
         record.edited = True
         record.saved = False
-    return _selection_payload(records, 0, "批量删除 Tag 完成")
+    return _selection_payload(records, index, "批量删除 Tag 完成")
 
 
-def batch_replace_tag(records_data: list[dict[str, Any]], old: str, new: str) -> tuple[Any, ...]:
+def batch_replace_tag(
+    records_data: list[dict[str, Any]],
+    current_index: int | None,
+    tags_text: str,
+    nl_text: str,
+    old: str,
+    new: str,
+) -> tuple[Any, ...]:
     records = deserialize_records(records_data)
     if not records:
         return [], [], image_preview_html(None), "", "", "", 0, "没有图片"
+    index = _sync_current_form(records, current_index, tags_text, nl_text)
     for record in records:
         record.tags = split_tag_text(replace_tags(tag_text(record.tags), old, new, TAG_RULES))
         record.tag_status = EDITED if record.tags else EMPTY
         record.edited = True
         record.saved = False
-    return _selection_payload(records, 0, "批量替换 Tag 完成")
+    return _selection_payload(records, index, "批量替换 Tag 完成")
 
 
-def batch_add_tag(records_data: list[dict[str, Any]], add_text: str, prepend: bool) -> tuple[Any, ...]:
+def batch_add_tag(
+    records_data: list[dict[str, Any]],
+    current_index: int | None,
+    tags_text: str,
+    nl_text: str,
+    add_text: str,
+    prepend: bool,
+) -> tuple[Any, ...]:
     records = deserialize_records(records_data)
     if not records:
-        return [], [], None, "", "", "", 0, "没有图片"
+        return [], [], image_preview_html(None), "", "", "", 0, "没有图片"
+    index = _sync_current_form(records, current_index, tags_text, nl_text)
     for record in records:
         record.tags = split_tag_text(add_tags(tag_text(record.tags), add_text, TAG_RULES, prepend=prepend))
         record.tag_status = EDITED if record.tags else EMPTY
         record.edited = True
         record.saved = False
-    return _selection_payload(records, 0, "批量添加 Tag 完成")
+    return _selection_payload(records, index, "批量添加 Tag 完成")
 
 
 def _batch_generate(
@@ -370,7 +428,7 @@ def _current_record(
     records = deserialize_records(records_data)
     if not records:
         return records, None, 0
-    index = min(max(current_index or 0, 0), len(records) - 1)
+    index = _clamp_index(records, current_index)
     return records, records[index], index
 
 
@@ -390,6 +448,7 @@ def _selection_payload(records: list[ImageRecord], index: int, message: str) -> 
 def _record_payload(records: list[ImageRecord], index: int, message: str) -> tuple[Any, ...]:
     record = records[index]
     return (
+        serialize_records(records),
         image_preview_html(record.image_path),
         tag_text(record.tags),
         record.nl,
@@ -404,3 +463,20 @@ def _event_index(event: Any) -> int:
     if isinstance(index, (list, tuple)):
         return int(index[0])
     return int(index or 0)
+
+
+def _clamp_index(records: list[ImageRecord], current_index: int | None) -> int:
+    return min(max(current_index or 0, 0), len(records) - 1)
+
+
+def _sync_current_form(
+    records: list[ImageRecord],
+    current_index: int | None,
+    tags_text: str,
+    nl_text: str,
+) -> int:
+    """Commit the visible editor fields before navigation or batch actions."""
+
+    index = _clamp_index(records, current_index)
+    update_record_text(records[index], tags_text, nl_text)
+    return index
