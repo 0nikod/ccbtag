@@ -15,11 +15,10 @@ def main() -> None:
         raise SystemExit("请使用 Python 3.12 运行安装脚本，例如: uv run python scripts/install.py")
 
     env = os.environ.copy()
-    env.setdefault("UV_CACHE_DIR", "/tmp/uv-cache")
     run(["uv", "sync", "--extra", "models", "--group", "dev"], env)
     print()
     print("安装完成。启动应用:")
-    print("UV_CACHE_DIR=/tmp/uv-cache uv run python -m app.app")
+    print("uv run ccbtag")
     print("默认模型目录: ./model")
     print()
     print("如果使用本地 vLLM/llama.cpp 服务，请设置:")

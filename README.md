@@ -16,8 +16,8 @@ tags + natural language
 ## 快速启动
 
 ```bash
-UV_CACHE_DIR=/tmp/uv-cache uv sync --extra models --group dev
-UV_CACHE_DIR=/tmp/uv-cache uv run python -m app.app
+uv sync --extra models --group dev
+uv run ccbtag
 ```
 
 PixAI 和 CL Tagger 由仓库内置的 ONNX loader 直接加载，默认模型目录为 `./model`。若要指定模型缓存目录：
@@ -44,19 +44,19 @@ export CCBTAG_NL_API_KEY=optional
 使用 Hugging Face：
 
 ```bash
-UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/download_models.py --source hf
+uv run ccbtag-download-models --source hf
 ```
 
 使用 ModelScope：
 
 ```bash
-UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/download_models.py --source modelscope
+uv run ccbtag-download-models --source modelscope
 ```
 
 也可以指定缓存目录：
 
 ```bash
-UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/download_models.py --source hf --model-dir ./model
+uv run ccbtag-download-models --source hf --model-dir ./model
 ```
 
 ## 保存格式

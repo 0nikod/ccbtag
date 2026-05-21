@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "ccbtag"
 version = "0.1.0"
@@ -17,10 +21,20 @@ models = [
     "onnxruntime>=1.18",
 ]
 
+[project.scripts]
+ccbtag = "app.app:main"
+ccbtag-download-models = "app.cli:download_models_main"
+
 [dependency-groups]
 dev = [
     "pytest>=8.0",
 ]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.setuptools.package-data]
+app = ["config/*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

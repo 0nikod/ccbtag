@@ -61,7 +61,7 @@ wheels = [
 [[package]]
 name = "ccbtag"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "gradio" },
     { name = "huggingface-hub" },

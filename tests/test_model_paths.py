@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+from app.cli import parse_download_models_args
 from app.core.model_paths import DEFAULT_MODEL_DIR, apply_default_model_cache_env, resolve_model_dir
 from app.core.onnx_bundles import (
     OnnxBundleSpec,
@@ -45,6 +46,15 @@ def test_parse_args_prefers_env_override(monkeypatch) -> None:
     args = parse_args()
 
     assert args.model_dir == "./custom-models"
+
+
+def test_package_cli_parse_defaults_model_dir(monkeypatch) -> None:
+    monkeypatch.delenv("CCBTAG_MODEL_DIR", raising=False)
+    monkeypatch.setattr("sys.argv", ["ccbtag-download-models"])
+
+    args = parse_download_models_args()
+
+    assert args.model_dir == "model"
 
 
 def test_apply_default_model_cache_env_sets_all_defaults(monkeypatch) -> None:
