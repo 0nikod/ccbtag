@@ -15,6 +15,7 @@ def _cl_config() -> ModelConfig:
         backend="onnx",
         model_path="nikoovo/cl-tagger",
         entry="CLTaggerOnnx",
+        extras={}
     )
 
 
