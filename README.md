@@ -41,23 +41,31 @@ export CCBTAG_NL_API_KEY=optional
 
 ## 下载模型
 
-使用 Hugging Face：
+默认使用 ModelScope：
+
+```bash
+uv run ccbtag-download-models
+```
+
+显式使用 Hugging Face：
 
 ```bash
 uv run ccbtag-download-models --source hf
 ```
 
-使用 ModelScope：
-
-```bash
-uv run ccbtag-download-models --source modelscope
-```
-
 也可以指定缓存目录：
 
 ```bash
-uv run ccbtag-download-models --source hf --model-dir ./model
+uv run ccbtag-download-models --model-dir ./model
 ```
+
+运行时缺少本地模型时也默认走 ModelScope。如需切换下载源：
+
+```bash
+export CCBTAG_MODEL_SOURCE=hf
+```
+
+`CL Tagger` 在 ModelScope 下只会下载 `nikoovo/cl-tagger` 仓库中的 `cl_tagger_1_02`。
 
 ## 保存格式
 

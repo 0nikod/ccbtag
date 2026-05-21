@@ -7,8 +7,10 @@ from typing import Any
 import numpy as np
 from PIL import Image
 
-from app.core.onnx_bundles import OnnxBundleSpec, ensure_hf_onnx_bundle, open_onnx_session
+from app.core.model_paths import resolve_model_source
+from app.core.onnx_bundles import ensure_onnx_bundle, open_onnx_session
 from app.models.base import BaseTagger, ModelInferenceError, ModelLoadError, TagPrediction
+from app.models.downloads import build_cl_tagger_bundle_spec
 
 
 class CLTaggerOnnx(BaseTagger):
@@ -24,13 +26,13 @@ class CLTaggerOnnx(BaseTagger):
     def load(self) -> None:
         try:
             import onnxruntime as ort
-            from huggingface_hub import hf_hub_download
         except Exception as exc:  # pragma: no cover - depends on optional ML deps
             raise ModelLoadError(
                 "CL Tagger 需要安装模型依赖: uv sync --extra models"
             ) from exc
 
-        bundle = ensure_hf_onnx_bundle(self._bundle_spec(), hf_hub_download)
+        source = resolve_model_source()
+        bundle = ensure_onnx_bundle(build_cl_tagger_bundle_spec(self.config, source), source)
         onnx_path = self._find_onnx_file(bundle)
         if onnx_path is None:
             raise ModelLoadError(f"未找到 CL Tagger ONNX 文件: {bundle.root}")
@@ -58,22 +60,6 @@ class CLTaggerOnnx(BaseTagger):
             TagPrediction(tag=self.tags[index], score=float(scores[index]), source=self.id)
             for index in range(count)
         ]
-
-    def _bundle_spec(self) -> OnnxBundleSpec:
-        model_name = str(self.config.extras.get("model_name", "cl_tagger_1_02"))
-        return OnnxBundleSpec(
-            repo_id=self.config.model_path,
-            required_files=(f"{model_name}/model.onnx",),
-            optional_files=(
-                "tag_mapping.json",
-                "model.onnx",
-                f"{model_name}/tag_mapping.json",
-                f"{model_name}_tag_mapping.json",
-                "selected_tags.json",
-                f"{model_name}/selected_tags.json",
-            ),
-            local_dir_env="CCBTAG_CL_TAGGER_DIR",
-        )
 
     def _find_onnx_file(self, bundle: Any) -> Path | None:
         model_name = str(self.config.extras.get("model_name", "cl_tagger_1_02"))

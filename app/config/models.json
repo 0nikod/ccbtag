@@ -8,6 +8,10 @@
       "backend": "onnx",
       "model_path": "deepghs/pixai-tagger-v0.9-onnx",
       "model_name": "v0.9",
+      "download_sources": {
+        "hf": "deepghs/pixai-tagger-v0.9-onnx",
+        "modelscope": "deepghs/pixai-tagger-v0.9-onnx"
+      },
       "entry": "PixaiOnnxTagger"
     },
     {
@@ -18,6 +22,10 @@
       "backend": "onnx",
       "model_path": "cella110n/cl_tagger",
       "model_name": "cl_tagger_1_02",
+      "download_sources": {
+        "hf": "cella110n/cl_tagger",
+        "modelscope": "nikoovo/cl-tagger"
+      },
       "entry": "CLTaggerOnnx"
     },
     {

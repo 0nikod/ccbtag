@@ -3,8 +3,16 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from app.cli import parse_download_models_args
-from app.core.model_paths import DEFAULT_MODEL_DIR, apply_default_model_cache_env, resolve_model_dir
+import pytest
+
+from app.cli import download_models_main, parse_download_models_args
+from app.core.model_paths import (
+    DEFAULT_MODEL_DIR,
+    DEFAULT_MODEL_SOURCE,
+    apply_default_model_cache_env,
+    resolve_model_dir,
+    resolve_model_source,
+)
 from app.core.onnx_bundles import (
     OnnxBundleSpec,
     clear_onnx_session_cache,
@@ -55,6 +63,44 @@ def test_package_cli_parse_defaults_model_dir(monkeypatch) -> None:
     args = parse_download_models_args()
 
     assert args.model_dir == "model"
+    assert args.source == DEFAULT_MODEL_SOURCE
+
+
+def test_package_cli_parse_prefers_model_source_env(monkeypatch) -> None:
+    monkeypatch.setenv("CCBTAG_MODEL_SOURCE", "hf")
+    monkeypatch.setattr("sys.argv", ["ccbtag-download-models"])
+
+    args = parse_download_models_args()
+
+    assert args.source == "hf"
+
+
+def test_package_cli_explicit_source_overrides_env(monkeypatch) -> None:
+    monkeypatch.setenv("CCBTAG_MODEL_SOURCE", "hf")
+    monkeypatch.setattr("sys.argv", ["ccbtag-download-models", "--source", "modelscope"])
+
+    args = parse_download_models_args()
+
+    assert args.source == "modelscope"
+
+
+def test_resolve_model_source_defaults_to_modelscope(monkeypatch) -> None:
+    monkeypatch.delenv("CCBTAG_MODEL_SOURCE", raising=False)
+
+    assert resolve_model_source() == DEFAULT_MODEL_SOURCE
+
+
+def test_resolve_model_source_normalizes_env(monkeypatch) -> None:
+    monkeypatch.setenv("CCBTAG_MODEL_SOURCE", "HF")
+
+    assert resolve_model_source() == "hf"
+
+
+def test_resolve_model_source_rejects_invalid_value(monkeypatch) -> None:
+    monkeypatch.setenv("CCBTAG_MODEL_SOURCE", "s3")
+
+    with pytest.raises(ValueError, match="不支持的模型下载源"):
+        resolve_model_source()
 
 
 def test_apply_default_model_cache_env_sets_all_defaults(monkeypatch) -> None:
@@ -169,3 +215,15 @@ def test_open_onnx_session_reuses_cached_session(tmp_path: Path) -> None:
 
     assert first is second
     assert calls == [(str(model_path), ["CUDAExecutionProvider", "CPUExecutionProvider"])]
+
+
+def test_download_models_main_uses_default_modelscope(monkeypatch) -> None:
+    calls: list[tuple[str, str]] = []
+
+    monkeypatch.delenv("CCBTAG_MODEL_SOURCE", raising=False)
+    monkeypatch.setattr("sys.argv", ["ccbtag-download-models"])
+    monkeypatch.setattr("app.cli.download_model_bundles", lambda model_dir, source: calls.append((model_dir, source)))
+
+    download_models_main()
+
+    assert calls == [("model", DEFAULT_MODEL_SOURCE)]

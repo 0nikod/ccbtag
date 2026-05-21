@@ -8,8 +8,10 @@ from typing import Any
 import numpy as np
 from PIL import Image
 
-from app.core.onnx_bundles import OnnxBundleSpec, ensure_hf_onnx_bundle, open_onnx_session
+from app.core.model_paths import resolve_model_source
+from app.core.onnx_bundles import ensure_onnx_bundle, open_onnx_session
 from app.models.base import BaseTagger, ModelInferenceError, ModelLoadError, TagPrediction
+from app.models.downloads import build_pixai_bundle_spec
 
 
 class PixaiOnnxTagger(BaseTagger):
@@ -23,13 +25,13 @@ class PixaiOnnxTagger(BaseTagger):
     def load(self) -> None:
         try:
             import onnxruntime as ort
-            from huggingface_hub import hf_hub_download
         except Exception as exc:  # pragma: no cover - depends on optional ML deps
             raise ModelLoadError(
                 "PixAI Tagger 需要安装模型依赖: uv sync --extra models"
             ) from exc
 
-        bundle = ensure_hf_onnx_bundle(self._bundle_spec(), hf_hub_download)
+        source = resolve_model_source()
+        bundle = ensure_onnx_bundle(build_pixai_bundle_spec(self.config, source), source)
         self.tags = self._load_tags(bundle.require("selected_tags.csv"))
         self.preprocess_steps = self._load_preprocess(bundle.require("preprocess.json"))
         self.bundle_thresholds = self._load_thresholds(bundle.get("thresholds.csv"))
@@ -52,13 +54,6 @@ class PixaiOnnxTagger(BaseTagger):
             TagPrediction(tag=self.tags[index]["name"], score=float(scores[index]), source=self.id)
             for index in range(count)
         ]
-
-    def _bundle_spec(self) -> OnnxBundleSpec:
-        return OnnxBundleSpec(
-            repo_id=self.config.model_path,
-            required_files=("model.onnx", "selected_tags.csv", "preprocess.json"),
-            optional_files=("thresholds.csv",),
-        )
 
     def _load_tags(self, path: Path) -> list[dict[str, Any]]:
         rows: list[dict[str, Any]] = []

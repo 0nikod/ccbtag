@@ -71,6 +71,7 @@ def test_pixai_predict_returns_tag_predictions_from_local_bundle(tmp_path: Path,
     _write_bundle(tmp_path)
     _install_fake_modules(monkeypatch, [np.asarray([[2.0, -2.0]], dtype="float32")])
     monkeypatch.setenv("CCBTAG_MODEL_DIR", str(tmp_path))
+    monkeypatch.setenv("CCBTAG_MODEL_SOURCE", "hf")
     image_path = tmp_path / "sample.png"
     Image.new("RGB", (4, 4), (255, 0, 0)).save(image_path)
 
@@ -91,6 +92,7 @@ def test_pixai_missing_required_file_has_readable_error(tmp_path: Path, monkeypa
     (bundle / "selected_tags.csv").write_text("id,name,category,ips\n0,1girl,0,[]\n", encoding="utf-8")
     _install_fake_modules(monkeypatch, [np.asarray([[0.0]], dtype="float32")])
     monkeypatch.setenv("CCBTAG_MODEL_DIR", str(tmp_path))
+    monkeypatch.setenv("CCBTAG_MODEL_SOURCE", "hf")
 
     model = PixaiOnnxTagger(_pixai_config())
 
@@ -104,6 +106,7 @@ def test_pixai_unknown_preprocess_stage_fails_fast(tmp_path: Path, monkeypatch) 
     (bundle / "preprocess.json").write_text('[{"type":"center_crop"}]', encoding="utf-8")
     _install_fake_modules(monkeypatch, [np.asarray([[0.0]], dtype="float32")])
     monkeypatch.setenv("CCBTAG_MODEL_DIR", str(tmp_path))
+    monkeypatch.setenv("CCBTAG_MODEL_SOURCE", "hf")
 
     model = PixaiOnnxTagger(_pixai_config())
 

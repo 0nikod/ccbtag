@@ -84,6 +84,14 @@ def ensure_hf_onnx_bundle(
     return ResolvedOnnxBundle(root=root, files=files)
 
 
+def ensure_onnx_bundle(
+    spec: OnnxBundleSpec,
+    source: str,
+    model_dir: str | os.PathLike[str] | None = None,
+) -> ResolvedOnnxBundle:
+    return ensure_hf_onnx_bundle(spec, create_download_file(source), model_dir=model_dir)
+
+
 def select_onnx_providers(available: list[str] | tuple[str, ...]) -> list[str]:
     providers = [provider for provider in ["CUDAExecutionProvider", "CPUExecutionProvider"] if provider in available]
     return providers or ["CPUExecutionProvider"]
@@ -104,6 +112,32 @@ def open_onnx_session(
 
 def clear_onnx_session_cache() -> None:
     _SESSION_CACHE.clear()
+
+
+def create_download_file(source: str) -> DownloadFile:
+    if source == "hf":
+        try:
+            from huggingface_hub import hf_hub_download
+        except Exception as exc:  # pragma: no cover - import boundary
+            raise ModelLoadError("Hugging Face 下载依赖不可用，请重新安装项目依赖") from exc
+
+        def download_file(*, repo_id: str, filename: str, local_dir: str) -> str:
+            return str(hf_hub_download(repo_id=repo_id, filename=filename, local_dir=local_dir))
+
+        return download_file
+
+    if source == "modelscope":
+        try:
+            from modelscope.hub.file_download import model_file_download
+        except Exception as exc:  # pragma: no cover - optional dependency boundary
+            raise ModelLoadError("ModelScope 下载需要安装模型依赖: uv sync --extra models") from exc
+
+        def download_file(*, repo_id: str, filename: str, local_dir: str) -> str:
+            return str(model_file_download(model_id=repo_id, file_path=filename, local_dir=local_dir))
+
+        return download_file
+
+    raise ModelLoadError(f"不支持的模型下载源: {source}")
 
 
 def _is_local_override(spec: OnnxBundleSpec) -> bool:
