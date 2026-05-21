@@ -28,13 +28,12 @@ export CCBTAG_MODEL_DIR=/path/to/model-cache
 
 ## 自然语言描述模型
 
-ToriiGate 0.5 按外部图文服务接入，不在 Gradio 进程内直接加载 5B
-模型。启动 vLLM、llama.cpp 或其他 OpenAI-compatible 服务后，配置：
+默认配置的是通用的 OpenAI-compatible 接口，方便按外部图文服务接入。启动 vLLM、llama.cpp 或其他 OpenAI-compatible 服务后，配置：
 
 ```bash
-export CCBTAG_NL_ENDPOINT=http://127.0.0.1:8000/v1/chat/completions
-export CCBTAG_NL_MODEL=Minthy/ToriiGate-0.5
-export CCBTAG_NL_API_KEY=optional
+export OPENAI_BASE_URL=http://127.0.0.1:8000/v1/chat/completions
+export OPENAI_MODEL=gpt-3.5-turbo
+export OPENAI_API_KEY=optional
 ```
 
 如果没有配置服务，Tag 功能仍可使用，但生成 NL 时会显示可读错误。

@@ -77,7 +77,7 @@ def build_app() -> gr.Blocks:
                             label="NL 服务地址",
                             value="http://127.0.0.1:8000/v1/chat/completions",
                         )
-                        nl_model_name = gr.Textbox(label="NL 模型名", value="Minthy/ToriiGate-0.5")
+                        nl_model_name = gr.Textbox(label="NL 模型名", value="gpt-3.5-turbo")
                         nl_api_key = gr.Textbox(label="API Key，可留空", type="password")
                     with gr.Row(elem_classes=["ccbtag-actions"]):
                         generate_nl_button = gr.Button("生成 NL", variant="secondary")

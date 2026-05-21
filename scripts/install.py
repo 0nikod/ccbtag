@@ -21,9 +21,9 @@ def main() -> None:
     print("uv run ccbtag")
     print("默认模型目录: ./model")
     print()
-    print("如果使用本地 vLLM/llama.cpp 服务，请设置:")
-    print("export CCBTAG_NL_ENDPOINT=http://127.0.0.1:8000/v1/chat/completions")
-    print("export CCBTAG_NL_MODEL=Minthy/ToriiGate-0.5")
+    print("如果使用本地 vLLM/llama.cpp 等 OpenAI 兼容服务，请设置:")
+    print("export OPENAI_BASE_URL=http://127.0.0.1:8000/v1/chat/completions")
+    print("export OPENAI_MODEL=gpt-3.5-turbo")
 
 
 if __name__ == "__main__":

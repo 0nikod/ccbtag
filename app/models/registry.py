@@ -10,7 +10,7 @@ from app.models.base import BaseModel, ModelConfig, ModelLoadError
 ENTRYPOINTS: dict[str, str] = {
     "PixaiOnnxTagger": "app.models.taggers.pixai_onnx:PixaiOnnxTagger",
     "CLTaggerOnnx": "app.models.taggers.cl_tagger_onnx:CLTaggerOnnx",
-    "ToriiGateHttpCaptioner": "app.models.captioners.toriigate_http:ToriiGateHttpCaptioner",
+    "OpenAIHttpCaptioner": "app.models.captioners.openai_http:OpenAIHttpCaptioner",
 }
 
 

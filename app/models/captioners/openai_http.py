@@ -10,47 +10,57 @@ from pathlib import Path
 from typing import Any
 
 from app.models.base import BaseCaptioner, ModelInferenceError, ModelLoadError
+from app.models.captioners.prompts import make_user_query, system_prompt
 
 
-class ToriiGateHttpCaptioner(BaseCaptioner):
-    """External ToriiGate adapter using an OpenAI-compatible chat endpoint."""
+class OpenAIHttpCaptioner(BaseCaptioner):
+    """Generic OpenAI-compatible HTTP captioner."""
 
     def load(self) -> None:
-        endpoint_env = str(self.config.extras.get("endpoint_env", "CCBTAG_NL_ENDPOINT"))
-        model_env = str(self.config.extras.get("model_env", "CCBTAG_NL_MODEL"))
-        api_key_env = str(self.config.extras.get("api_key_env", "CCBTAG_NL_API_KEY"))
+        endpoint_env = str(self.config.extras.get("endpoint_env", "OPENAI_BASE_URL"))
+        model_env = str(self.config.extras.get("model_env", "OPENAI_MODEL"))
+        api_key_env = str(self.config.extras.get("api_key_env", "OPENAI_API_KEY"))
+
         self.endpoint = os.getenv(endpoint_env, "http://127.0.0.1:8000/v1/chat/completions")
         self.model = os.getenv(model_env, self.config.model_path)
         self.api_key = os.getenv(api_key_env, "")
-        self.timeout = float(os.getenv("CCBTAG_NL_TIMEOUT", "120"))
+        self.timeout = float(os.getenv(str(self.config.extras.get("timeout_env", "OPENAI_TIMEOUT")), "120"))
+
         if not self.endpoint:
             raise ModelLoadError(f"未配置 NL 服务端点: {endpoint_env}")
         self.loaded = True
 
     def predict(self, image: str | Path, tags: list[str] | None = None, **kwargs: Any) -> str:
         path = self._ensure_image_path(image)
-        prompt = self._prompt(tags or [], kwargs)
+        user_prompt = self._prompt(tags or [], kwargs)
+
         endpoint = str(kwargs.get("endpoint") or self.endpoint)
         model = str(kwargs.get("model") or self.model)
         api_key = str(kwargs.get("api_key") or self.api_key)
+
         payload = {
             "model": model,
             "messages": [
                 {
+                    "role": "system",
+                    "content": system_prompt
+                },
+                {
                     "role": "user",
                     "content": [
-                        {"type": "text", "text": prompt},
+                        {"type": "text", "text": user_prompt},
                         {"type": "image_url", "image_url": {"url": self._data_url(path)}},
                     ],
                 }
             ],
-            "max_tokens": int(kwargs.get("max_length", 128)),
+            "max_tokens": int(kwargs.get("max_length", 300)),
             "temperature": float(kwargs.get("temperature", 0.2)),
         }
         body = json.dumps(payload).encode("utf-8")
         headers = {"Content-Type": "application/json"}
         if api_key:
             headers["Authorization"] = f"Bearer {api_key}"
+
         request = urllib.request.Request(endpoint, data=body, headers=headers, method="POST")
         try:
             with urllib.request.urlopen(request, timeout=self.timeout) as response:
@@ -62,17 +72,31 @@ class ToriiGateHttpCaptioner(BaseCaptioner):
         return self._extract_text(data)
 
     def _prompt(self, tags: list[str], kwargs: dict[str, Any]) -> str:
-        language = str(kwargs.get("language", "en"))
-        use_tags = bool(kwargs.get("use_tags_as_context", True))
-        base = (
-            "Describe this anime-style image in one concise natural-language sentence "
-            "for Stable Diffusion or LoRA dataset training. Do not return a comma tag list."
+        c_type = str(kwargs.get("c_type", "short"))
+        use_names = bool(kwargs.get("use_names", True))
+        add_tags = bool(kwargs.get("use_tags_as_context", True))
+        add_characters = bool(kwargs.get("add_characters", True))
+        add_char_tags = bool(kwargs.get("add_char_tags", False))
+        add_description = bool(kwargs.get("add_description", False))
+        underscores_replace = bool(kwargs.get("underscores_replace", False))
+
+        item = {
+            "tags": tags,
+            "characters": kwargs.get("characters", []),
+            "char_p_tags": kwargs.get("char_p_tags", {"chars": {}, "skins": {}}),
+            "char_descr": kwargs.get("char_descr", {"chars": {}, "skins": {}})
+        }
+
+        return make_user_query(
+            item=item,
+            c_type=c_type,
+            use_names=use_names,
+            add_tags=add_tags,
+            add_characters=add_characters,
+            add_char_tags=add_char_tags,
+            add_description=add_description,
+            underscores_replace=underscores_replace
         )
-        if language != "en":
-            base += f" Use language: {language}."
-        if use_tags and tags:
-            base += " Existing tags for context: " + ", ".join(tags) + "."
-        return base
 
     def _data_url(self, path: Path) -> str:
         mime_type = mimetypes.guess_type(path.name)[0] or "image/png"

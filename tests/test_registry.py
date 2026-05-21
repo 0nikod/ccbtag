@@ -9,7 +9,7 @@ class RegistryTest(unittest.TestCase):
         registry = ModelRegistry(Path("app/config/models.json"))
 
         self.assertIn("PixAI Tagger v0.9", registry.display_choices("tag"))
-        self.assertIn("ToriiGate 0.5", registry.display_choices("nl"))
+        self.assertIn("OpenAI Completions", registry.display_choices("nl"))
 
     def test_registry_unloads_previous_model_with_same_task(self) -> None:
         from app.models.base import BaseModel

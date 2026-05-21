@@ -29,16 +29,16 @@
       "entry": "CLTaggerOnnx"
     },
     {
-      "id": "toriigate_0_5",
-      "display_name": "ToriiGate 0.5",
+      "id": "openai_completions",
+      "display_name": "OpenAI Completions",
       "task": "nl",
       "source": "external",
       "backend": "openai_compatible_http",
-      "model_path": "Minthy/ToriiGate-0.5",
-      "endpoint_env": "CCBTAG_NL_ENDPOINT",
-      "model_env": "CCBTAG_NL_MODEL",
-      "api_key_env": "CCBTAG_NL_API_KEY",
-      "entry": "ToriiGateHttpCaptioner"
+      "model_path": "gpt-3.5-turbo",
+      "endpoint_env": "OPENAI_BASE_URL",
+      "model_env": "OPENAI_MODEL",
+      "api_key_env": "OPENAI_API_KEY",
+      "entry": "OpenAIHttpCaptioner"
     }
   ]
 }
