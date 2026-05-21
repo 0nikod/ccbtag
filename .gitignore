@@ -8,7 +8,7 @@ __pycache__/
 htmlcov/
 
 # Local runtime/model data.
-/models/
+model/
 datasets/
 caption_json/
 
