@@ -16,6 +16,7 @@ from app.core.model_paths import (
 from app.core.onnx_bundles import (
     OnnxBundleSpec,
     clear_onnx_session_cache,
+    close_onnx_session,
     ensure_hf_onnx_bundle,
     open_onnx_session,
     resolve_bundle_dir,
@@ -215,6 +216,30 @@ def test_open_onnx_session_reuses_cached_session(tmp_path: Path) -> None:
 
     assert first is second
     assert calls == [(str(model_path), ["CUDAExecutionProvider", "CPUExecutionProvider"])]
+
+
+def test_close_onnx_session_removes_from_cache(tmp_path: Path) -> None:
+    clear_onnx_session_cache()
+    model_path = tmp_path / "model.onnx"
+    model_path.write_text("x", encoding="utf-8")
+    calls: list[str] = []
+
+    class FakeOrt:
+        @staticmethod
+        def get_available_providers() -> list[str]:
+            return ["CPUExecutionProvider"]
+
+    def fake_factory(path: str, *, providers: list[str]) -> object:
+        calls.append(path)
+        return {"path": path, "providers": providers}
+
+    open_onnx_session(model_path, FakeOrt, session_factory=fake_factory)
+    assert len(calls) == 1
+
+    close_onnx_session(model_path)
+    # The cache should be empty now for this path, so it creates a new one
+    open_onnx_session(model_path, FakeOrt, session_factory=fake_factory)
+    assert len(calls) == 2
 
 
 def test_download_models_main_uses_default_modelscope(monkeypatch) -> None:

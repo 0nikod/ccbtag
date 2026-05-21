@@ -114,6 +114,13 @@ def clear_onnx_session_cache() -> None:
     _SESSION_CACHE.clear()
 
 
+def close_onnx_session(onnx_path: Path) -> None:
+    key_path = str(onnx_path.expanduser().resolve())
+    keys_to_remove = [k for k in _SESSION_CACHE if k[0] == key_path]
+    for k in keys_to_remove:
+        del _SESSION_CACHE[k]
+
+
 def create_download_file(source: str) -> DownloadFile:
     if source == "hf":
         try:

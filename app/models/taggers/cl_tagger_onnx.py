@@ -8,7 +8,7 @@ import numpy as np
 from PIL import Image
 
 from app.core.model_paths import resolve_model_source
-from app.core.onnx_bundles import ensure_onnx_bundle, open_onnx_session
+from app.core.onnx_bundles import close_onnx_session, ensure_onnx_bundle, open_onnx_session
 from app.models.base import BaseTagger, ModelInferenceError, ModelLoadError, TagPrediction
 from app.models.downloads import build_cl_tagger_bundle_spec
 
@@ -41,9 +41,17 @@ class CLTaggerOnnx(BaseTagger):
             raise ModelLoadError(f"未找到 CL Tagger tag_mapping.json: {bundle.root}")
 
         self.tags = self._load_mapping(mapping_path)
-        self.session = open_onnx_session(onnx_path, ort)
+        self.onnx_path = onnx_path
+        self.session = open_onnx_session(self.onnx_path, ort)
         self.input_name = self.session.get_inputs()[0].name
         self.loaded = True
+
+    def unload(self) -> None:
+        if hasattr(self, "session"):
+            self.session = None
+        if hasattr(self, "onnx_path"):
+            close_onnx_session(self.onnx_path)
+        super().unload()
 
     def predict(self, image: str | Path, **kwargs: Any) -> list[TagPrediction]:
         path = self._ensure_image_path(image)

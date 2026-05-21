@@ -43,9 +43,18 @@ class ModelRegistry:
         raise KeyError(f"未知模型: {display_name}")
 
     def get_model(self, model_id: str) -> BaseModel:
+        config = self._config_by_id(model_id)
+        task = config.task
+
+        # Unload other loaded models for the same task
+        for existing_id, instance in list(self._instances.items()):
+            if instance.config.task == task and existing_id != model_id:
+                instance.unload()
+                del self._instances[existing_id]
+
         if model_id in self._instances:
             return self._instances[model_id]
-        config = self._config_by_id(model_id)
+
         cls = self._load_entrypoint(config.entry)
         model = cls(config)
         model.load()

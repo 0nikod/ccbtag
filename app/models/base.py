@@ -77,6 +77,9 @@ class BaseModel:
     def load(self) -> None:
         self.loaded = True
 
+    def unload(self) -> None:
+        self.loaded = False
+
     def _ensure_image_path(self, image: str | Path) -> Path:
         path = Path(image).expanduser()
         if not path.exists():
