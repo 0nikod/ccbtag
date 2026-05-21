@@ -4,10 +4,10 @@ import base64
 import json
 import mimetypes
 import os
-import urllib.error
-import urllib.request
 from pathlib import Path
 from typing import Any
+
+import openai
 
 from app.models.base import BaseCaptioner, ModelInferenceError, ModelLoadError
 from app.models.captioners.prompts import make_user_query, system_prompt
@@ -21,13 +21,23 @@ class OpenAIHttpCaptioner(BaseCaptioner):
         model_env = str(self.config.extras.get("model_env", "OPENAI_MODEL"))
         api_key_env = str(self.config.extras.get("api_key_env", "OPENAI_API_KEY"))
 
-        self.endpoint = os.getenv(endpoint_env, "http://127.0.0.1:8000/v1/chat/completions")
+        self.endpoint = os.getenv(endpoint_env, "http://127.0.0.1:1234/v1")
         self.model = os.getenv(model_env, self.config.model_path)
-        self.api_key = os.getenv(api_key_env, "")
+        self.api_key = os.getenv(api_key_env, "sk-dummy")
         self.timeout = float(os.getenv(str(self.config.extras.get("timeout_env", "OPENAI_TIMEOUT")), "120"))
 
         if not self.endpoint:
             raise ModelLoadError(f"未配置 NL 服务端点: {endpoint_env}")
+
+        try:
+            self.client = openai.OpenAI(
+                base_url=self.endpoint,
+                api_key=self.api_key,
+                timeout=self.timeout
+            )
+        except Exception as exc:
+            raise ModelLoadError(f"OpenAI 客户端初始化失败: {exc}") from exc
+
         self.loaded = True
 
     def predict(self, image: str | Path, tags: list[str] | None = None, **kwargs: Any) -> str:
@@ -38,38 +48,42 @@ class OpenAIHttpCaptioner(BaseCaptioner):
         model = str(kwargs.get("model") or self.model)
         api_key = str(kwargs.get("api_key") or self.api_key)
 
-        payload = {
-            "model": model,
-            "messages": [
-                {
-                    "role": "system",
-                    "content": system_prompt
-                },
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": user_prompt},
-                        {"type": "image_url", "image_url": {"url": self._data_url(path)}},
-                    ],
-                }
-            ],
-            "max_tokens": int(kwargs.get("max_length", 300)),
-            "temperature": float(kwargs.get("temperature", 0.2)),
-        }
-        body = json.dumps(payload).encode("utf-8")
-        headers = {"Content-Type": "application/json"}
-        if api_key:
-            headers["Authorization"] = f"Bearer {api_key}"
+        if endpoint != self.endpoint or api_key != self.api_key:
+            client = openai.OpenAI(base_url=endpoint, api_key=api_key, timeout=self.timeout)
+            client_used = client
+        else:
+            client_used = self.client
 
-        request = urllib.request.Request(endpoint, data=body, headers=headers, method="POST")
         try:
-            with urllib.request.urlopen(request, timeout=self.timeout) as response:
-                data = json.loads(response.read().decode("utf-8"))
-        except urllib.error.URLError as exc:  # pragma: no cover - external service boundary
-            raise ModelInferenceError(f"NL 服务不可用: {exc}") from exc
-        except json.JSONDecodeError as exc:  # pragma: no cover - external service boundary
-            raise ModelInferenceError("NL 服务返回的不是 JSON") from exc
-        return self._extract_text(data)
+            response = client_used.chat.completions.create(
+                model=model,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": system_prompt
+                    },
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": user_prompt},
+                            {"type": "image_url", "image_url": {"url": self._data_url(path)}},
+                        ],
+                    }
+                ],
+                max_tokens=int(kwargs.get("max_length", 300)),
+                temperature=float(kwargs.get("temperature", 0.2)),
+            )
+            
+            if not response.choices:
+                raise ModelInferenceError("NL 服务返回缺少 choices")
+                
+            content = response.choices[0].message.content
+            if content is None:
+                raise ModelInferenceError("NL 服务返回缺少文本内容")
+                
+            return content.strip()
+        except openai.OpenAIError as exc:
+            raise ModelInferenceError(f"NL 服务调用失败: {exc}") from exc
 
     def _prompt(self, tags: list[str], kwargs: dict[str, Any]) -> str:
         c_type = str(kwargs.get("c_type", "short"))
@@ -103,18 +117,3 @@ class OpenAIHttpCaptioner(BaseCaptioner):
         encoded = base64.b64encode(path.read_bytes()).decode("ascii")
         return f"data:{mime_type};base64,{encoded}"
 
-    def _extract_text(self, data: dict[str, Any]) -> str:
-        choices = data.get("choices")
-        if not isinstance(choices, list) or not choices:
-            raise ModelInferenceError("NL 服务返回缺少 choices")
-        first = choices[0]
-        if isinstance(first, dict):
-            message = first.get("message")
-            if isinstance(message, dict):
-                content = message.get("content")
-                if isinstance(content, str):
-                    return content.strip()
-            text = first.get("text")
-            if isinstance(text, str):
-                return text.strip()
-        raise ModelInferenceError("NL 服务返回缺少文本内容")

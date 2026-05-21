@@ -41,3 +41,6 @@ app = ["config/*.json"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+
+[tool.ruff.format]
+docstring-code-format = true

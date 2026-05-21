@@ -42,7 +42,7 @@ def build_app() -> gr.Blocks:
                         open_button = gr.Button("打开文件夹", variant="primary", scale=1)
                     image_table = gr.Dataframe(
                         headers=TABLE_HEADERS,
-                        datatype=["str"] * len(TABLE_HEADERS),
+                        datatype="str",
                         label="图片列表",
                         interactive=False,
                         wrap=False,
