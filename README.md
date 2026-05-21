@@ -31,7 +31,7 @@ export CCBTAG_MODEL_DIR=/path/to/model-cache
 默认配置的是通用的 OpenAI-compatible 接口，方便按外部图文服务接入。启动 vLLM、llama.cpp 或其他 OpenAI-compatible 服务后，配置：
 
 ```bash
-export OPENAI_BASE_URL=http://127.0.0.1:8000/v1/chat/completions
+export OPENAI_BASE_URL=http://127.0.0.1:1234/v1/chat/completions
 export OPENAI_MODEL=gpt-3.5-turbo
 export OPENAI_API_KEY=optional
 ```

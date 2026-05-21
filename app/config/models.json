@@ -34,7 +34,7 @@
       "task": "nl",
       "source": "external",
       "backend": "openai_compatible_http",
-      "model_path": "gpt-3.5-turbo",
+      "model_path": "toriigate-0.5_gguf",
       "endpoint_env": "OPENAI_BASE_URL",
       "model_env": "OPENAI_MODEL",
       "api_key_env": "OPENAI_API_KEY",
