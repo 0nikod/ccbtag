@@ -29,6 +29,7 @@ ccbtag-download-models = "app.cli:download_models_main"
 [dependency-groups]
 dev = [
     "pytest>=8.0",
+    "ruff>=0.15.13",
 ]
 
 [tool.setuptools.packages.find]
