@@ -9,7 +9,7 @@ import numpy as np
 from PIL import Image
 
 from app.core.model_paths import resolve_model_source
-from app.core.onnx_bundles import ResolvedOnnxBundle, ensure_onnx_bundle, open_onnx_session, resolve_bundle_dir
+from app.core.onnx_bundles import ResolvedOnnxBundle, ensure_onnx_bundle, open_onnx_session
 from app.models.base import BaseTagger, ModelInferenceError, ModelLoadError, TagPrediction
 from app.models.downloads import build_cl_tagger_bundle_spec
 
@@ -60,7 +60,7 @@ class CLTaggerOnnx(BaseTagger):
         override = os.getenv(spec.local_dir_env) if getattr(spec, "local_dir_env", None) else None
         if not override:
             return None
-        root = resolve_bundle_dir(spec)
+        root = Path(override).expanduser().resolve()
         files = {
             name: path
             for name, path in self._candidate_bundle_paths(root).items()
