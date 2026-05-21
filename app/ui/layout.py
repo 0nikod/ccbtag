@@ -36,7 +36,7 @@ def build_app() -> gr.Blocks:
                         metadata_location = gr.Radio(
                             label="元数据保存位置",
                             choices=["caption_json", "同目录"],
-                            value="caption_json",
+                            value=events.default_metadata_location(),
                             scale=2,
                         )
                         open_button = gr.Button("打开文件夹", variant="primary", scale=1)
@@ -75,10 +75,11 @@ def build_app() -> gr.Blocks:
                     with gr.Accordion("NL 服务设置", open=False):
                         nl_endpoint = gr.Textbox(
                             label="NL 服务地址",
-                            value="http://127.0.0.1:8000/v1/chat/completions",
+                            value=events.default_nl_endpoint(),
                         )
-                        nl_model_name = gr.Textbox(label="NL 模型名", value="gpt-3.5-turbo")
-                        nl_api_key = gr.Textbox(label="API Key，可留空", type="password")
+                        nl_model_name = gr.Textbox(label="NL 模型名", value=events.default_nl_model_name())
+                        nl_api_key = gr.Textbox(label="API Key，可留空", type="password", value=events.default_nl_api_key())
+                        shuffle_tags = gr.Checkbox(label="生成前打乱 Tag 顺序", value=events.default_shuffle_tags())
                     with gr.Row(elem_classes=["ccbtag-actions"]):
                         generate_nl_button = gr.Button("生成 NL", variant="secondary")
                         generate_both_button = gr.Button("生成 Tag + NL", variant="primary")
@@ -158,7 +159,7 @@ def build_app() -> gr.Blocks:
         )
         generate_nl_button.click(
             events.generate_nl,
-            inputs=[records_state, current_index, nl_model, nl_endpoint, nl_model_name, nl_api_key, tags_text, nl_text],
+            inputs=[records_state, current_index, nl_model, nl_endpoint, nl_model_name, nl_api_key, tags_text, nl_text, shuffle_tags],
             outputs=open_outputs,
         )
         generate_both_button.click(
@@ -173,6 +174,7 @@ def build_app() -> gr.Blocks:
                 nl_api_key,
                 tags_text,
                 nl_text,
+                shuffle_tags,
             ],
             outputs=open_outputs,
         )
@@ -194,7 +196,7 @@ def build_app() -> gr.Blocks:
         )
         batch_nl_button.click(
             events.batch_generate_nl,
-            inputs=[records_state, current_index, tags_text, nl_text, nl_model, nl_endpoint, nl_model_name, nl_api_key, skip_edited],
+            inputs=[records_state, current_index, tags_text, nl_text, nl_model, nl_endpoint, nl_model_name, nl_api_key, skip_edited, shuffle_tags],
             outputs=open_outputs,
         )
         batch_both_button.click(
@@ -210,6 +212,7 @@ def build_app() -> gr.Blocks:
                 nl_model_name,
                 nl_api_key,
                 skip_edited,
+                shuffle_tags,
             ],
             outputs=open_outputs,
         )

@@ -21,8 +21,16 @@ class OpenAIHttpCaptioner(BaseCaptioner):
         model_env = str(self.config.extras.get("model_env", "OPENAI_MODEL"))
         api_key_env = str(self.config.extras.get("api_key_env", "OPENAI_API_KEY"))
 
-        self.endpoint = os.getenv(endpoint_env, "http://127.0.0.1:1234/v1")
-        self.model = os.getenv(model_env, self.config.model_path)
+        default_endpoint = str(
+            self.config.extras.get(
+                "default_endpoint",
+                self.config.extras.get("ui_default_endpoint", "http://127.0.0.1:8000/v1/chat/completions"),
+            )
+        )
+        default_model = str(self.config.extras.get("default_model_name", self.config.model_path))
+
+        self.endpoint = os.getenv(endpoint_env, default_endpoint)
+        self.model = os.getenv(model_env, default_model)
         self.api_key = os.getenv(api_key_env, "sk-dummy")
         self.timeout = float(os.getenv(str(self.config.extras.get("timeout_env", "OPENAI_TIMEOUT")), "120"))
 
@@ -109,7 +117,8 @@ class OpenAIHttpCaptioner(BaseCaptioner):
             add_characters=add_characters,
             add_char_tags=add_char_tags,
             add_description=add_description,
-            underscores_replace=underscores_replace
+            underscores_replace=underscores_replace,
+            shuffle_tags=bool(kwargs.get("shuffle_tags", True)),
         )
 
     def _data_url(self, path: Path) -> str:

@@ -146,9 +146,20 @@ prompts_names_only = {
     }
 
 
-def make_user_query(item, c_type, use_names, add_tags, add_characters, add_char_tags, add_description, underscores_replace = False):
-    tags = item.get('tags', [])
-    random.shuffle(tags)
+def make_user_query(
+    item,
+    c_type,
+    use_names,
+    add_tags,
+    add_characters,
+    add_char_tags,
+    add_description,
+    underscores_replace=False,
+    shuffle_tags=True,
+):
+    tags = list(item.get('tags', []))
+    if shuffle_tags:
+        random.shuffle(tags)
     if underscores_replace:
         tags = [a.replace('_', ' ') if len(a)>3 else a for a in tags]
         tags_string = ', '.join(tags)

@@ -22,10 +22,10 @@ from app.core.dataset import (
     update_record_text,
 )
 from app.core.preview import image_preview_html
+from app.core.settings import AppConfig, load_app_config
 from app.core.tag_utils import (
     add_tags,
     apply_tag_rules,
-    config_from_rules,
     delete_tags,
     prediction_dicts_to_tags,
     replace_tags,
@@ -42,8 +42,16 @@ def load_rules() -> dict[str, Any]:
 
 
 RULES = load_rules()
-TAG_RULES = config_from_rules(RULES)
+APP_CONFIG = load_app_config(CONFIG_ROOT)
+TAG_RULES = APP_CONFIG.tag
+NL_RULES = APP_CONFIG.nl
+CAPTION_RULES = APP_CONFIG.caption
+UI_DEFAULTS = APP_CONFIG.ui
 REGISTRY = default_registry()
+
+
+def app_config() -> AppConfig:
+    return APP_CONFIG
 
 
 def tag_model_choices() -> list[str]:
@@ -56,6 +64,32 @@ def nl_model_choices() -> list[str]:
 
 def metadata_location_value(label: str) -> str:
     return "same_folder" if label == "同目录" else "caption_json"
+
+
+def default_metadata_location() -> str:
+    return CAPTION_RULES.metadata_location
+
+
+def default_nl_endpoint() -> str:
+    configs = REGISTRY.list_captioners()
+    if configs:
+        return str(configs[0].extras.get("default_endpoint", UI_DEFAULTS.nl_endpoint))
+    return UI_DEFAULTS.nl_endpoint
+
+
+def default_nl_model_name() -> str:
+    configs = REGISTRY.list_captioners()
+    if configs:
+        return str(configs[0].extras.get("default_model_name", UI_DEFAULTS.nl_model_name))
+    return UI_DEFAULTS.nl_model_name
+
+
+def default_nl_api_key() -> str:
+    return UI_DEFAULTS.nl_api_key
+
+
+def default_shuffle_tags() -> bool:
+    return UI_DEFAULTS.shuffle_tags
 
 
 def open_folder(folder: str, metadata_location_label: str) -> tuple[Any, ...]:
@@ -122,20 +156,20 @@ def next_record(
 
 
 def preview_caption(tags_text: str, nl_text: str) -> str:
-    return join_caption(tags_text, nl_text)
+    return join_caption(tags_text, nl_text, joiner=CAPTION_RULES.joiner)
 
 
 def apply_rules_to_current(tags_text: str, nl_text: str) -> tuple[str, str]:
     cleaned = tag_text(apply_tag_rules(split_tag_text(tags_text), TAG_RULES), TAG_RULES.separator)
-    return cleaned, join_caption(cleaned, nl_text)
+    return cleaned, join_caption(cleaned, nl_text, joiner=CAPTION_RULES.joiner)
 
 
 def clear_tags(tags_text: str, nl_text: str) -> tuple[str, str]:
-    return "", join_caption("", nl_text)
+    return "", join_caption("", nl_text, joiner=CAPTION_RULES.joiner)
 
 
 def clear_nl(tags_text: str, nl_text: str) -> tuple[str, str]:
-    return "", join_caption(tags_text, "")
+    return "", join_caption(tags_text, "", joiner=CAPTION_RULES.joiner)
 
 
 def generate_tag(
@@ -171,6 +205,7 @@ def generate_nl(
     nl_api_key: str,
     tags_text: str,
     nl_text: str,
+    shuffle_tags: bool = True,
 ) -> tuple[Any, ...]:
     records, record, index = _current_record(records_data, current_index)
     if record is None:
@@ -178,16 +213,16 @@ def generate_nl(
     update_record_text(record, tags_text, nl_text)
     try:
         model = REGISTRY.get_by_display("nl", nl_model_display)
-        nl_rules = RULES.get("nl", {})
         generated = model.predict(
             record.image_path,
             tags=record.tags,
             endpoint=nl_endpoint,
             model=nl_model_name,
             api_key=nl_api_key,
-            max_length=nl_rules.get("max_length", 128),
-            language=nl_rules.get("language", "en"),
-            use_tags_as_context=nl_rules.get("use_tags_as_context", True),
+            max_length=NL_RULES.max_length,
+            language=NL_RULES.language,
+            use_tags_as_context=NL_RULES.use_tags_as_context,
+            shuffle_tags=shuffle_tags,
         )
         set_generated_nl(record, generated)
         message = f"NL 生成完成: {record.file_name}"
@@ -208,6 +243,7 @@ def generate_tag_and_nl(
     nl_api_key: str,
     tags_text: str,
     nl_text: str,
+    shuffle_tags: bool = True,
 ) -> tuple[Any, ...]:
     payload = generate_tag(records_data, current_index, tag_model_display, tags_text, nl_text)
     updated_records = payload[0]
@@ -222,6 +258,7 @@ def generate_tag_and_nl(
         nl_api_key,
         updated_tags,
         updated_nl,
+        shuffle_tags,
     )
 
 
@@ -264,7 +301,7 @@ def batch_generate_tags(
     nl_text: str,
     tag_model_display: str,
     skip_edited: bool,
-    progress: gr.Progress = gr.Progress(),
+    progress: gr.Progress | None = None,
 ) -> tuple[Any, ...]:
     records = deserialize_records(records_data)
     if not records:
@@ -284,14 +321,15 @@ def batch_generate_nl(
     nl_model_name: str,
     nl_api_key: str,
     skip_edited: bool,
-    progress: gr.Progress = gr.Progress(),
+    shuffle_tags: bool = True,
+    progress: gr.Progress | None = None,
 ) -> tuple[Any, ...]:
     records = deserialize_records(records_data)
     if not records:
         return [], [], image_preview_html(None), "", "", "", 0, "没有图片"
     index = _sync_current_form(records, current_index, tags_text, nl_text)
     message = _batch_generate(
-        records, None, nl_model_display, skip_edited, progress, nl_endpoint, nl_model_name, nl_api_key
+        records, None, nl_model_display, skip_edited, progress, nl_endpoint, nl_model_name, nl_api_key, shuffle_tags
     )
     return _selection_payload(records, index, message)
 
@@ -307,14 +345,15 @@ def batch_generate_both(
     nl_model_name: str,
     nl_api_key: str,
     skip_edited: bool,
-    progress: gr.Progress = gr.Progress(),
+    shuffle_tags: bool = True,
+    progress: gr.Progress | None = None,
 ) -> tuple[Any, ...]:
     records = deserialize_records(records_data)
     if not records:
         return [], [], image_preview_html(None), "", "", "", 0, "没有图片"
     index = _sync_current_form(records, current_index, tags_text, nl_text)
     message = _batch_generate(
-        records, tag_model_display, nl_model_display, skip_edited, progress, nl_endpoint, nl_model_name, nl_api_key
+        records, tag_model_display, nl_model_display, skip_edited, progress, nl_endpoint, nl_model_name, nl_api_key, shuffle_tags
     )
     return _selection_payload(records, index, message)
 
@@ -381,12 +420,12 @@ def _batch_generate(
     nl_endpoint: str = "",
     nl_model_name: str = "",
     nl_api_key: str = "",
+    shuffle_tags: bool = True,
 ) -> str:
     total = len(records)
     errors = 0
     tag_model = REGISTRY.get_by_display("tag", tag_model_display) if tag_model_display else None
     nl_model = REGISTRY.get_by_display("nl", nl_model_display) if nl_model_display else None
-    nl_rules = RULES.get("nl", {})
     for index, record in enumerate(records):
         if progress:
             progress((index + 1) / total, desc=f"{index + 1}/{total} {record.file_name}")
@@ -404,9 +443,10 @@ def _batch_generate(
                     endpoint=nl_endpoint,
                     model=nl_model_name,
                     api_key=nl_api_key,
-                    max_length=nl_rules.get("max_length", 128),
-                    language=nl_rules.get("language", "en"),
-                    use_tags_as_context=nl_rules.get("use_tags_as_context", True),
+                    max_length=NL_RULES.max_length,
+                    language=NL_RULES.language,
+                    use_tags_as_context=NL_RULES.use_tags_as_context,
+                    shuffle_tags=shuffle_tags,
                 )
                 set_generated_nl(record, generated)
         except Exception as exc:

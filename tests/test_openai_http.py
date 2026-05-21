@@ -6,6 +6,7 @@ import openai
 
 from app.models.base import ModelConfig, ModelInferenceError, ModelLoadError
 from app.models.captioners.openai_http import OpenAIHttpCaptioner
+from app.models.captioners.prompts import make_user_query
 
 
 class TestOpenAIHttpCaptioner(unittest.TestCase):
@@ -107,6 +108,22 @@ class TestOpenAIHttpCaptioner(unittest.TestCase):
                 captioner.predict(Path("test.png"))
 
         self.assertIn("API Rate Limit", str(context.exception))
+
+    def test_make_user_query_does_not_mutate_tags(self) -> None:
+        tags = ["1girl", "solo", "long_hair"]
+
+        make_user_query(
+            {"tags": tags},
+            "short",
+            False,
+            True,
+            False,
+            False,
+            False,
+            shuffle_tags=True,
+        )
+
+        self.assertEqual(tags, ["1girl", "solo", "long_hair"])
 
 
 if __name__ == "__main__":
