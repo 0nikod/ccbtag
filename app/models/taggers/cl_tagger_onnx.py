@@ -108,7 +108,7 @@ class CLTaggerOnnx(BaseTagger):
                 if value:
                     return self._extract_tags(value)
             if all(str(key).isdigit() for key in data.keys()):
-                return [str(data[str(index)]) for index in range(len(data))]
+                return self._extract_tags([data[str(index)] for index in range(len(data))])
             if all(str(value).isdigit() for value in data.values()):
                 pairs = sorted(((int(index), tag) for tag, index in data.items()), key=lambda item: item[0])
                 return [str(tag) for _, tag in pairs]
