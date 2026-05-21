@@ -11,6 +11,10 @@ class RegistryTest(unittest.TestCase):
         self.assertIn("PixAI Tagger v0.9", registry.display_choices("tag"))
         self.assertIn("ToriiGate 0.5", registry.display_choices("nl"))
 
+    def test_app_code_no_longer_imports_imgutils(self) -> None:
+        for path in Path("app").rglob("*.py"):
+            self.assertNotIn("imgutils", path.read_text(encoding="utf-8"), path.as_posix())
+
 
 if __name__ == "__main__":
     unittest.main()

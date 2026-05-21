@@ -20,7 +20,7 @@ UV_CACHE_DIR=/tmp/uv-cache uv sync --extra models --group dev
 UV_CACHE_DIR=/tmp/uv-cache uv run python -m app.app
 ```
 
-默认使用 Hugging Face 缓存。若要指定模型缓存目录：
+PixAI 和 CL Tagger 由仓库内置的 ONNX loader 直接加载，默认模型目录为 `./model`。若要指定模型缓存目录：
 
 ```bash
 export CCBTAG_MODEL_DIR=/path/to/model-cache
@@ -56,7 +56,7 @@ UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/download_models.py --source mod
 也可以指定缓存目录：
 
 ```bash
-UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/download_models.py --source hf --model-dir ./models
+UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/download_models.py --source hf --model-dir ./model
 ```
 
 ## 保存格式

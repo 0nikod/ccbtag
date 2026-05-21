@@ -13,7 +13,6 @@ dependencies = [
 
 [project.optional-dependencies]
 models = [
-    "dghs-imgutils>=0.19.0",
     "modelscope>=1.17",
     "onnxruntime>=1.18",
 ]

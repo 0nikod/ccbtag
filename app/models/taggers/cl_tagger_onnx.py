@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 from PIL import Image
 
+from app.core.onnx_bundles import OnnxBundleSpec, ensure_hf_onnx_bundle, open_onnx_session
 from app.models.base import BaseTagger, ModelInferenceError, ModelLoadError, TagPrediction
 
 
@@ -24,25 +24,22 @@ class CLTaggerOnnx(BaseTagger):
     def load(self) -> None:
         try:
             import onnxruntime as ort
-            from huggingface_hub import snapshot_download
+            from huggingface_hub import hf_hub_download
         except Exception as exc:  # pragma: no cover - depends on optional ML deps
             raise ModelLoadError(
                 "CL Tagger 需要安装模型依赖: uv sync --extra models"
             ) from exc
 
-        model_root = self._download_or_find(snapshot_download)
-        onnx_path = self._find_file(model_root, "*.onnx")
-        mapping_path = self._find_mapping_file(model_root)
+        bundle = ensure_hf_onnx_bundle(self._bundle_spec(), hf_hub_download)
+        onnx_path = self._find_onnx_file(bundle)
         if onnx_path is None:
-            raise ModelLoadError(f"未找到 CL Tagger ONNX 文件: {model_root}")
+            raise ModelLoadError(f"未找到 CL Tagger ONNX 文件: {bundle.root}")
+        mapping_path = self._find_mapping_file(bundle)
         if mapping_path is None:
-            raise ModelLoadError(f"未找到 CL Tagger tag_mapping.json: {model_root}")
+            raise ModelLoadError(f"未找到 CL Tagger tag_mapping.json: {bundle.root}")
 
         self.tags = self._load_mapping(mapping_path)
-        providers = ["CUDAExecutionProvider", "CPUExecutionProvider"]
-        available = set(ort.get_available_providers())
-        selected = [provider for provider in providers if provider in available]
-        self.session = ort.InferenceSession(str(onnx_path), providers=selected or ["CPUExecutionProvider"])
+        self.session = open_onnx_session(onnx_path, ort)
         self.input_name = self.session.get_inputs()[0].name
         self.loaded = True
 
@@ -62,35 +59,42 @@ class CLTaggerOnnx(BaseTagger):
             for index in range(count)
         ]
 
-    def _download_or_find(self, snapshot_download: Any) -> Path:
-        repo_id = self.config.model_path
+    def _bundle_spec(self) -> OnnxBundleSpec:
         model_name = str(self.config.extras.get("model_name", "cl_tagger_1_02"))
-        cache_dir = os.getenv("CCBTAG_MODEL_DIR") or None
-        local_root = os.getenv("CCBTAG_CL_TAGGER_DIR")
-        if local_root:
-            return Path(local_root).expanduser().resolve()
-        return Path(
-            snapshot_download(
-                repo_id=repo_id,
-                cache_dir=cache_dir,
-                allow_patterns=[f"{model_name}/*", "tag_mapping.json", "*.json"],
-            )
+        return OnnxBundleSpec(
+            repo_id=self.config.model_path,
+            required_files=(f"{model_name}/model.onnx",),
+            optional_files=(
+                "tag_mapping.json",
+                "model.onnx",
+                f"{model_name}/tag_mapping.json",
+                f"{model_name}_tag_mapping.json",
+                "selected_tags.json",
+                f"{model_name}/selected_tags.json",
+            ),
+            local_dir_env="CCBTAG_CL_TAGGER_DIR",
         )
 
-    def _find_file(self, root: Path, pattern: str) -> Path | None:
+    def _find_onnx_file(self, bundle: Any) -> Path | None:
         model_name = str(self.config.extras.get("model_name", "cl_tagger_1_02"))
-        candidates = sorted((root / model_name).glob(pattern)) if (root / model_name).exists() else []
-        candidates.extend(sorted(root.glob(pattern)))
-        return candidates[0] if candidates else None
+        for name in [f"{model_name}/model.onnx", "model.onnx"]:
+            path = bundle.get(name)
+            if path is not None and path.exists():
+                return path
+        return None
 
-    def _find_mapping_file(self, root: Path) -> Path | None:
+    def _find_mapping_file(self, bundle: Any) -> Path | None:
         model_name = str(self.config.extras.get("model_name", "cl_tagger_1_02"))
-        names = ["tag_mapping.json", f"{model_name}_tag_mapping.json", "selected_tags.json"]
-        for base in [root / model_name, root]:
-            for name in names:
-                candidate = base / name
-                if candidate.exists():
-                    return candidate
+        for name in [
+            "tag_mapping.json",
+            f"{model_name}/tag_mapping.json",
+            f"{model_name}_tag_mapping.json",
+            "selected_tags.json",
+            f"{model_name}/selected_tags.json",
+        ]:
+            path = bundle.get(name)
+            if path is not None and path.exists():
+                return path
         return None
 
     def _load_mapping(self, path: Path) -> list[str]:
