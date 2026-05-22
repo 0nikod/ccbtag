@@ -35,7 +35,7 @@
       "source": "external",
       "backend": "openai_compatible_http",
       "model_path": "toriigate-0.5_gguf",
-      "default_endpoint": "http://127.0.0.1:8000/v1",
+      "default_endpoint": "http://127.0.0.1:8080/v1",
       "default_model_name": "toriigate-0.5",
       "endpoint_env": "OPENAI_BASE_URL",
       "model_env": "OPENAI_MODEL",
