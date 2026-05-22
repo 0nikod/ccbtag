@@ -8,7 +8,7 @@ from app.core.caption import split_tag_text, tag_text
 
 @dataclass(frozen=True)
 class TagRuleConfig:
-    """User-visible tag cleanup rules loaded from `rules.json`."""
+    """User-visible tag cleanup rules loaded from app config."""
 
     threshold: float = 0.35
     max_tags: int = 80

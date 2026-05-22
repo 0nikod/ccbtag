@@ -214,15 +214,24 @@ def set_error(
 
 
 def save_record(
-    record: ImageRecord, metadata_location: str = "caption_json"
+    record: ImageRecord,
+    metadata_location: str = "caption_json",
+    *,
+    save_txt: bool = True,
+    save_metadata_json: bool = True,
+    joiner: str = ". ",
 ) -> ImageRecord:
+    if not save_txt and not save_metadata_json:
+        raise ValueError("save_txt 和 save_metadata_json 不能同时为 false")
     image_path = Path(record.image_path)
     _backfill_manual_flags(record)
     record.txt_path = str(txt_path_for_image(image_path))
     record.metadata_path = str(metadata_path_for_image(image_path, metadata_location))
-    final_caption = record.final_caption
-    write_text(Path(record.txt_path), final_caption)
-    write_json(Path(record.metadata_path), _metadata_payload(record, final_caption))
+    final_caption = join_caption(record.tags, record.nl, joiner=joiner)
+    if save_txt:
+        write_text(Path(record.txt_path), final_caption)
+    if save_metadata_json:
+        write_json(Path(record.metadata_path), _metadata_payload(record, final_caption))
     record.saved = True
     record.dirty = False
     record.error = ""

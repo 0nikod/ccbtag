@@ -5,7 +5,7 @@ import gradio as gr
 from app.ui import events
 
 
-TABLE_HEADERS = ["文件名", "状态", "Tag", "NL", "保存"]
+TABLE_HEADERS = ["#", "文件名", "状态", "Tag", "NL", "保存", "错误"]
 
 
 APP_CSS = """
@@ -69,7 +69,7 @@ def build_app() -> gr.Blocks:
                             with gr.Row():
                                 metadata_location = gr.Radio(
                                     label="元数据保存位置",
-                                    choices=["caption_json", "同目录"],
+                                    choices=events.metadata_location_choices(),
                                     value=events.default_metadata_location(),
                                     scale=2,
                                 )

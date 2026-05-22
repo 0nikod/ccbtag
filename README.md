@@ -20,6 +20,20 @@ uv sync --extra models --group dev
 uv run ccbtag
 ```
 
+## 配置
+
+运行时配置文件现在是：
+
+```text
+app/config/app.json
+```
+
+`app/config/rules.json` 已删除，不再提供兼容读取。升级后需要把旧配置替换成新的 `app.json`，其中：
+
+- `shuffle_tags` 位于 `nl`
+- UI 默认值位于 `ui`
+- `caption.order` 已删除，最终 caption 顺序固定为 `tag -> nl`
+
 PixAI 和 CL Tagger 由仓库内置的 ONNX loader 直接加载，默认模型目录为 `./model`。若要指定模型缓存目录：
 
 ```bash

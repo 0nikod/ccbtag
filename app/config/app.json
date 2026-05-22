@@ -6,27 +6,26 @@
     "replace_underscore": true,
     "sort_by_score": true,
     "blacklist": [
-      "lowres",
-      "watermark",
-      "signature",
-      "username",
-      "jpeg artifacts"
     ],
     "replace_rules": {
-      "grey hair": "gray hair",
-      "looking_at_viewer": "looking at viewer"
     }
   },
   "nl": {
-    "max_length": 128,
+    "max_length": 512,
     "language": "en",
-    "use_tags_as_context": true
+    "use_tags_as_context": true,
+    "shuffle_tags": true
   },
   "caption": {
-    "order": ["tag", "nl"],
     "joiner": ". ",
     "save_txt": true,
     "save_metadata_json": true,
     "metadata_location": "caption_json"
+  },
+  "ui": {
+    "metadata_location": "caption_json",
+    "nl_endpoint": "http://127.0.0.1:8000/v1",
+    "nl_model_name": "toriigate-0.5",
+    "nl_api_key": ""
   }
 }
