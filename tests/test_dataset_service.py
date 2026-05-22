@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 
 from app.core.dataset import GENERATED, ImageRecord
 from app.services.dataset_service import DatasetService
@@ -67,3 +68,19 @@ def test_clamp_index_handles_none_negative_and_overflow() -> None:
     assert service.clamp_index(records, None) == 0
     assert service.clamp_index(records, -1) == 0
     assert service.clamp_index(records, 99) == 0
+
+
+def test_sync_current_form_persists_draft(tmp_path: Path) -> None:
+    from tests.helpers import write_image
+    from app.core.dataset import scan_dataset
+
+    write_image(tmp_path / "0001.png")
+    records = scan_dataset(tmp_path)
+
+    DatasetService().sync_current_form(records, 0, "solo", "draft nl")
+
+    metadata = json.loads(
+        (tmp_path / "caption_json" / "0001.caption.json").read_text(encoding="utf-8")
+    )
+    assert metadata["draft"]["tags"][0]["name"] == "solo"
+    assert metadata["draft"]["nl"]["text"] == "draft nl"

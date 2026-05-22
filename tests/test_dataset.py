@@ -1,4 +1,5 @@
 import base64
+import json
 import unittest
 from pathlib import Path
 
@@ -168,6 +169,123 @@ class DatasetTest(unittest.TestCase):
             self.assertTrue(reopened.edited)
             self.assertTrue(reopened.tag_manual)
             self.assertFalse(reopened.dirty)
+
+    def test_scan_dataset_prefers_draft_overlay_and_keeps_saved_flag(self) -> None:
+        from tempfile import TemporaryDirectory
+
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            image_path = root / "0001.png"
+            write_image(image_path)
+            metadata_dir = root / "caption_json"
+            metadata_dir.mkdir()
+            (metadata_dir / "0001.caption.json").write_text(
+                json.dumps(
+                    {
+                        "image": "0001.png",
+                        "tags": [{"name": "solo", "score": 0.9, "source": "model"}],
+                        "nl": {"text": "saved nl", "source": "model"},
+                        "final_caption": "solo. saved nl",
+                        "tag_manual": False,
+                        "nl_manual": False,
+                        "edited": False,
+                        "draft": {
+                            "tags": [
+                                {"name": "draft tag", "score": 0.5, "source": "model"}
+                            ],
+                            "nl": {"text": "draft nl", "source": "manual"},
+                            "final_caption": "draft tag. draft nl",
+                            "tag_manual": False,
+                            "nl_manual": True,
+                            "edited": True,
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            reopened = scan_dataset(root)[0]
+
+            self.assertEqual(reopened.tags, ["draft tag"])
+            self.assertEqual(reopened.nl, "draft nl")
+            self.assertEqual(
+                reopened.tag_details,
+                [{"name": "draft tag", "score": 0.5, "source": "model"}],
+            )
+            self.assertTrue(reopened.saved)
+            self.assertTrue(reopened.dirty)
+
+    def test_scan_dataset_restores_draft_only_metadata_without_saved_flag(self) -> None:
+        from tempfile import TemporaryDirectory
+
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            image_path = root / "0001.png"
+            write_image(image_path)
+            metadata_dir = root / "caption_json"
+            metadata_dir.mkdir()
+            (metadata_dir / "0001.caption.json").write_text(
+                json.dumps(
+                    {
+                        "image": "0001.png",
+                        "draft": {
+                            "tags": [
+                                {"name": "solo", "score": None, "source": "manual"}
+                            ],
+                            "nl": {"text": "draft only", "source": "manual"},
+                            "final_caption": "solo. draft only",
+                            "tag_manual": True,
+                            "nl_manual": True,
+                            "edited": True,
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            reopened = scan_dataset(root)[0]
+
+            self.assertEqual(reopened.tags, ["solo"])
+            self.assertEqual(reopened.nl, "draft only")
+            self.assertFalse(reopened.saved)
+            self.assertTrue(reopened.dirty)
+
+    def test_save_record_overwrites_draft_with_saved_metadata(self) -> None:
+        from tempfile import TemporaryDirectory
+
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            image_path = root / "0001.png"
+            write_image(image_path)
+            metadata_dir = root / "caption_json"
+            metadata_dir.mkdir()
+            metadata_path = metadata_dir / "0001.caption.json"
+            metadata_path.write_text(
+                json.dumps(
+                    {
+                        "image": "0001.png",
+                        "draft": {
+                            "tags": [
+                                {"name": "draft tag", "score": None, "source": "manual"}
+                            ],
+                            "nl": {"text": "draft nl", "source": "manual"},
+                            "final_caption": "draft tag. draft nl",
+                            "tag_manual": True,
+                            "nl_manual": True,
+                            "edited": True,
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            record = scan_dataset(root)[0]
+
+            save_record(record, "caption_json")
+            metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+
+            self.assertNotIn("draft", metadata)
+            self.assertEqual(metadata["tags"][0]["name"], "draft tag")
+            self.assertFalse(record.dirty)
 
 
 if __name__ == "__main__":

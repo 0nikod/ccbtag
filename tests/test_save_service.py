@@ -135,3 +135,34 @@ def test_metadata_location_defaults_to_config(tmp_path: Path) -> None:
     services.save.save_current(records, 0, "solo", "", None)
 
     assert (tmp_path / "0001.caption.json").exists()
+
+
+def test_save_current_clears_existing_draft(tmp_path: Path) -> None:
+    write_image(tmp_path / "0001.png")
+    records = scan_dataset(tmp_path)
+    services = build_services()
+
+    services.dataset.sync_current_form(records, 0, "solo", "draft nl")
+    services.save.save_current(records, 0, "solo", "draft nl", "caption_json")
+
+    metadata = json.loads(
+        (tmp_path / "caption_json" / "0001.caption.json").read_text(encoding="utf-8")
+    )
+    assert "draft" not in metadata
+
+
+def test_save_current_removes_draft_only_metadata_when_json_save_disabled(
+    tmp_path: Path,
+) -> None:
+    write_image(tmp_path / "0001.png")
+    base_config = make_config()
+    config = make_config(
+        caption=replace(base_config.caption, save_txt=True, save_metadata_json=False)
+    )
+    services = build_services(config=config)
+    records = scan_dataset(tmp_path)
+
+    services.dataset.sync_current_form(records, 0, "solo", "draft nl")
+    services.save.save_current(records, 0, "solo", "draft nl", "caption_json")
+
+    assert not (tmp_path / "caption_json" / "0001.caption.json").exists()

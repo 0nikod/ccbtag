@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from app.core.caption import tag_text
-from app.core.dataset import ImageRecord, update_record_text
+from app.core.dataset import ImageRecord, save_record_draft, update_record_text
 from app.core.tag_utils import TagRuleConfig, add_tags, delete_tags, replace_tags
 
 
@@ -14,8 +14,9 @@ class TagEditResult:
 
 
 class TagEditService:
-    def __init__(self, tag_rules: TagRuleConfig) -> None:
+    def __init__(self, tag_rules: TagRuleConfig, joiner: str = ". ") -> None:
         self.tag_rules = tag_rules
+        self.joiner = joiner
 
     def delete_tags(
         self,
@@ -28,6 +29,7 @@ class TagEditService:
             next_tags = delete_tags(tag_text(record.tags), delete_text, self.tag_rules)
             update_record_text(record, next_tags, record.nl)
             if record.tags != before:
+                save_record_draft(record, joiner=self.joiner)
                 changed += 1
         return TagEditResult(changed, f"批量删除 Tag 完成: {changed} 张")
 
@@ -43,6 +45,7 @@ class TagEditService:
             next_tags = replace_tags(tag_text(record.tags), old, new, self.tag_rules)
             update_record_text(record, next_tags, record.nl)
             if record.tags != before:
+                save_record_draft(record, joiner=self.joiner)
                 changed += 1
         return TagEditResult(changed, f"批量替换 Tag 完成: {changed} 张")
 
@@ -60,5 +63,6 @@ class TagEditService:
             )
             update_record_text(record, next_tags, record.nl)
             if record.tags != before:
+                save_record_draft(record, joiner=self.joiner)
                 changed += 1
         return TagEditResult(changed, f"批量添加 Tag 完成: {changed} 张")

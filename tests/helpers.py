@@ -120,7 +120,7 @@ def build_services(
 ) -> AppServices:
     active_config = config or load_app_config()
     active_registry = registry or FakeRegistry()
-    dataset = DatasetService()
+    dataset = DatasetService(active_config.caption.joiner)
     generation = GenerationService(active_config, active_registry, active_config.tag)
     return AppServices(
         config=active_config,
@@ -129,5 +129,5 @@ def build_services(
         generation=generation,
         batch=BatchService(generation),
         save=SaveService(active_config, dataset),
-        tag_edit=TagEditService(active_config.tag),
+        tag_edit=TagEditService(active_config.tag, active_config.caption.joiner),
     )

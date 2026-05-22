@@ -2,7 +2,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from app.core.dataset import ImageRecord, scan_dataset, update_record_text
+from app.core.dataset import (
+    ImageRecord,
+    save_record_draft,
+    scan_dataset,
+    update_record_text,
+)
 
 
 @dataclass
@@ -13,6 +18,9 @@ class SelectionResult:
 
 
 class DatasetService:
+    def __init__(self, joiner: str = ". ") -> None:
+        self.joiner = joiner
+
     def open_folder(
         self, folder: str, metadata_location: str = "caption_json"
     ) -> SelectionResult:
@@ -70,6 +78,8 @@ class DatasetService:
     ) -> int:
         index = self.clamp_index(records, current_index)
         update_record_text(records[index], tags_text, nl_text)
+        if records[index].dirty:
+            save_record_draft(records[index], joiner=self.joiner)
         return index
 
     def clamp_index(self, records: list[ImageRecord], current_index: int | None) -> int:

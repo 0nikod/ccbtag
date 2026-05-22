@@ -29,7 +29,7 @@ def create_app_services(
 ) -> AppServices:
     config = load_app_config(config_root)
     active_registry = registry or default_registry()
-    dataset = DatasetService()
+    dataset = DatasetService(config.caption.joiner)
     generation = GenerationService(config, active_registry, config.tag)
     return AppServices(
         config=config,
@@ -38,5 +38,5 @@ def create_app_services(
         generation=generation,
         batch=BatchService(generation),
         save=SaveService(config, dataset),
-        tag_edit=TagEditService(config.tag),
+        tag_edit=TagEditService(config.tag, config.caption.joiner),
     )

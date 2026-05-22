@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 from app.core.dataset import (
     ImageRecord,
+    save_record_draft,
     set_error,
     set_generated_nl,
     set_generated_tags,
@@ -53,6 +54,11 @@ class GenerationService:
             ]
             tags = prediction_dicts_to_tags(predictions, self.tag_rules)
             set_generated_tags(record, tags, predictions)
+            save_record_draft(
+                record,
+                self.config.caption.metadata_location,
+                joiner=self.config.caption.joiner,
+            )
             return GenerateResult(True, f"Tag 生成完成: {record.file_name}")
         except Exception as exc:
             set_error(record, str(exc), "tag")
@@ -83,6 +89,11 @@ class GenerationService:
                 shuffle_tags=shuffle_tags,
             )
             set_generated_nl(record, generated)
+            save_record_draft(
+                record,
+                self.config.caption.metadata_location,
+                joiner=self.config.caption.joiner,
+            )
             return GenerateResult(True, f"NL 生成完成: {record.file_name}")
         except Exception as exc:
             set_error(record, str(exc), "nl")

@@ -224,6 +224,7 @@ def build_app() -> gr.Blocks:
             status,
         ]
         edit_outputs = [tags_text, final_caption]
+        autosave_outputs = [records_state, image_table, final_caption, current_index]
 
         open_button.click(
             events.open_folder,
@@ -245,11 +246,15 @@ def build_app() -> gr.Blocks:
             inputs=[records_state, current_index, tags_text, nl_text],
             outputs=record_outputs,
         )
-        tags_text.change(
-            events.preview_caption, inputs=[tags_text, nl_text], outputs=final_caption
+        tags_text.input(
+            events.autosave_current,
+            inputs=[records_state, current_index, tags_text, nl_text],
+            outputs=autosave_outputs,
         )
-        nl_text.change(
-            events.preview_caption, inputs=[tags_text, nl_text], outputs=final_caption
+        nl_text.input(
+            events.autosave_current,
+            inputs=[records_state, current_index, tags_text, nl_text],
+            outputs=autosave_outputs,
         )
 
         def show_toast(msg: str):

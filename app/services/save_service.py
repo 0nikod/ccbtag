@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.core.dataset import ImageRecord, save_record
+from app.core.dataset import ImageRecord, clear_record_draft, save_record
 from app.core.settings import AppConfig
 from app.services.dataset_service import DatasetService, SelectionResult
 
@@ -53,3 +53,4 @@ class SaveService:
             save_metadata_json=self.config.caption.save_metadata_json,
             joiner=self.config.caption.joiner,
         )
+        clear_record_draft(record, location)

@@ -6,7 +6,7 @@ from typing import Any
 import gradio as gr
 
 from app.core.caption import join_caption, split_tag_text, tag_text
-from app.core.dataset import deserialize_records
+from app.core.dataset import deserialize_records, serialize_records, table_rows
 from app.core.settings import AppConfig
 from app.core.tag_utils import apply_tag_rules
 from app.services import (
@@ -173,6 +173,26 @@ def next_record(
 
 def preview_caption(tags_text: str, nl_text: str) -> str:
     return join_caption(tags_text, nl_text, joiner=SERVICES.config.caption.joiner)
+
+
+def autosave_current(
+    records_data: list[dict[str, Any]],
+    current_index: int | None,
+    tags_text: str,
+    nl_text: str,
+) -> tuple[list[dict[str, Any]], list[list[str]], str, int]:
+    records = deserialize_records(records_data)
+    if not records:
+        return [], [], preview_caption(tags_text, nl_text), 0
+    index = SERVICES.dataset.sync_current_form(
+        records, current_index, tags_text, nl_text
+    )
+    return (
+        serialize_records(records),
+        table_rows(records),
+        preview_caption(tags_text, nl_text),
+        index,
+    )
 
 
 def apply_rules_to_current(tags_text: str, nl_text: str) -> tuple[str, str]:

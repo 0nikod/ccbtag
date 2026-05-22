@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+import json
 from pathlib import Path
 
 from app.core.dataset import deserialize_records, scan_dataset, serialize_records
@@ -179,3 +180,52 @@ def test_default_shuffle_tags_uses_config_nl() -> None:
         assert events.default_shuffle_tags() is False
     finally:
         events.set_services_for_test(previous)
+
+
+def test_autosave_current_updates_state_and_draft(tmp_path: Path) -> None:
+    write_image(tmp_path / "0001.png")
+    records = serialize_records(scan_dataset(tmp_path))
+
+    payload = events.autosave_current(records, 0, "solo", "draft nl")
+
+    updated = deserialize_records(payload[0])
+    assert updated[0].tags == ["solo"]
+    assert updated[0].nl == "draft nl"
+    assert payload[2] == "solo. draft nl"
+    metadata = json.loads(
+        (tmp_path / "caption_json" / "0001.caption.json").read_text(encoding="utf-8")
+    )
+    assert metadata["draft"]["nl"]["text"] == "draft nl"
+
+
+def test_open_folder_restores_draft_overlay(tmp_path: Path) -> None:
+    write_image(tmp_path / "0001.png")
+    metadata_dir = tmp_path / "caption_json"
+    metadata_dir.mkdir()
+    (metadata_dir / "0001.caption.json").write_text(
+        json.dumps(
+            {
+                "image": "0001.png",
+                "tags": [{"name": "saved tag", "score": 0.8, "source": "model"}],
+                "nl": {"text": "saved nl", "source": "model"},
+                "final_caption": "saved tag. saved nl",
+                "tag_manual": False,
+                "nl_manual": False,
+                "edited": False,
+                "draft": {
+                    "tags": [{"name": "draft tag", "score": None, "source": "manual"}],
+                    "nl": {"text": "draft nl", "source": "manual"},
+                    "final_caption": "draft tag. draft nl",
+                    "tag_manual": True,
+                    "nl_manual": True,
+                    "edited": True,
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    payload = events.open_folder(str(tmp_path), "caption_json")
+
+    assert payload[3] == "draft tag"
+    assert payload[4] == "draft nl"
