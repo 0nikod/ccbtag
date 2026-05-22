@@ -12,14 +12,10 @@ dependencies = [
     "gradio>=4.44",
     "huggingface-hub>=0.27",
     "numpy>=1.26",
+    "onnxruntime-gpu[cuda,cudnn]>=1.26.0",
     "openai>=1.0",
     "pillow>=10.4",
-]
-
-[project.optional-dependencies]
-models = [
     "modelscope>=1.17",
-    "onnxruntime>=1.18",
 ]
 
 [project.scripts]
@@ -27,10 +23,7 @@ ccbtag = "app.app:main"
 ccbtag-download-models = "app.cli:download_models_main"
 
 [dependency-groups]
-dev = [
-    "pytest>=8.0",
-    "ruff>=0.15.13",
-]
+dev = ["pre-commit>=4.6.0", "pytest>=8.0", "ruff>=0.15.13"]
 
 [tool.setuptools.packages.find]
 include = ["app*"]
@@ -41,6 +34,11 @@ app = ["config/*.json"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
 
 [tool.ruff.format]
 docstring-code-format = true
