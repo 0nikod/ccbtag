@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import gradio as gr
 
+from app.core.preview import image_preview_html
 from app.ui import events
 
 
@@ -46,7 +47,7 @@ function() {
 
 
 def build_app() -> gr.Blocks:
-    with gr.Blocks(title="CCBTag", js=SHORTCUT_JS) as app:
+    with gr.Blocks(title="CCBTag") as app:
         records_state = gr.State([])
         current_index = gr.State(0)
 
@@ -89,7 +90,7 @@ def build_app() -> gr.Blocks:
                             scale=5, min_width=420, elem_classes=["ccbtag-preview"]
                         ):
                             preview_image = gr.HTML(
-                                label="图片预览", value=events.image_preview_html(None)
+                                label="图片预览", value=image_preview_html(None)
                             )
                             with gr.Row(
                                 variant="panel", elem_classes=["ccbtag-actions"]

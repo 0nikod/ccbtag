@@ -1,5 +1,5 @@
 from app.core.dataset import ImageRecord, table_rows
-from app.ui.layout import TABLE_HEADERS
+from app.ui.layout import TABLE_HEADERS, build_app
 
 
 def test_table_headers_match_table_rows() -> None:
@@ -15,3 +15,9 @@ def test_table_headers_match_table_rows() -> None:
     )
 
     assert len(TABLE_HEADERS) == len(rows[0])
+
+
+def test_build_app_smoke() -> None:
+    app = build_app()
+
+    assert app is not None
