@@ -8,8 +8,17 @@ import numpy as np
 from PIL import Image
 
 from app.core.model_paths import resolve_model_source
-from app.core.onnx_bundles import close_onnx_session, ensure_onnx_bundle, open_onnx_session
-from app.models.base import BaseTagger, ModelInferenceError, ModelLoadError, TagPrediction
+from app.core.onnx_bundles import (
+    close_onnx_session,
+    ensure_onnx_bundle,
+    open_onnx_session,
+)
+from app.models.base import (
+    BaseTagger,
+    ModelInferenceError,
+    ModelLoadError,
+    TagPrediction,
+)
 from app.models.downloads import build_cl_tagger_bundle_spec
 
 
@@ -32,7 +41,9 @@ class CLTaggerOnnx(BaseTagger):
             ) from exc
 
         source = resolve_model_source()
-        bundle = ensure_onnx_bundle(build_cl_tagger_bundle_spec(self.config, source), source)
+        bundle = ensure_onnx_bundle(
+            build_cl_tagger_bundle_spec(self.config, source), source
+        )
         onnx_path = self._find_onnx_file(bundle)
         if onnx_path is None:
             raise ModelLoadError(f"未找到 CL Tagger ONNX 文件: {bundle.root}")
@@ -65,7 +76,9 @@ class CLTaggerOnnx(BaseTagger):
         scores = self._probabilities(scores)
         count = min(len(self.tags), scores.shape[0])
         return [
-            TagPrediction(tag=self.tags[index], score=float(scores[index]), source=self.id)
+            TagPrediction(
+                tag=self.tags[index], score=float(scores[index]), source=self.id
+            )
             for index in range(count)
         ]
 
@@ -101,16 +114,26 @@ class CLTaggerOnnx(BaseTagger):
 
     def _extract_tags(self, data: Any) -> list[str]:
         if isinstance(data, list):
-            return [str(item.get("name", item.get("tag", item))) if isinstance(item, dict) else str(item) for item in data]
+            return [
+                str(item.get("name", item.get("tag", item)))
+                if isinstance(item, dict)
+                else str(item)
+                for item in data
+            ]
         if isinstance(data, dict):
             for key in ["tags", "tag_mapping", "labels", "id2label"]:
                 value = data.get(key)
                 if value:
                     return self._extract_tags(value)
             if all(str(key).isdigit() for key in data.keys()):
-                return self._extract_tags([data[str(index)] for index in range(len(data))])
+                return self._extract_tags(
+                    [data[str(index)] for index in range(len(data))]
+                )
             if all(str(value).isdigit() for value in data.values()):
-                pairs = sorted(((int(index), tag) for tag, index in data.items()), key=lambda item: item[0])
+                pairs = sorted(
+                    ((int(index), tag) for tag, index in data.items()),
+                    key=lambda item: item[0],
+                )
                 return [str(tag) for _, tag in pairs]
         return []
 
@@ -118,9 +141,14 @@ class CLTaggerOnnx(BaseTagger):
         with Image.open(path) as image:
             rgb = image.convert("RGB")
             canvas = Image.new("RGB", (max(rgb.size), max(rgb.size)), (255, 255, 255))
-            offset = ((canvas.width - rgb.width) // 2, (canvas.height - rgb.height) // 2)
+            offset = (
+                (canvas.width - rgb.width) // 2,
+                (canvas.height - rgb.height) // 2,
+            )
             canvas.paste(rgb, offset)
-            resized = canvas.resize((self.image_size, self.image_size), Image.Resampling.LANCZOS)
+            resized = canvas.resize(
+                (self.image_size, self.image_size), Image.Resampling.LANCZOS
+            )
         array = np.asarray(resized).astype("float32") / 255.0
         return np.expand_dims(np.transpose(array, (2, 0, 1)), axis=0)
 

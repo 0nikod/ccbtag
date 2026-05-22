@@ -35,7 +35,9 @@ def download_model_bundles(model_dir: str, source: str) -> None:
     resolved_source = resolve_model_source(source)
     resolved_dir = str(resolve_model_dir(model_dir))
     registry = default_registry()
-    for config, spec in iter_downloadable_onnx_bundle_specs(registry.configs, resolved_source):
+    for config, spec in iter_downloadable_onnx_bundle_specs(
+        registry.configs, resolved_source
+    ):
         print(f"下载 {config.display_name}: {resolved_source} -> {spec.repo_id}")
         ensure_onnx_bundle(spec, resolved_source, model_dir=resolved_dir)
 

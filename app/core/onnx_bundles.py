@@ -45,7 +45,9 @@ class ResolvedOnnxBundle:
         return self.files.get(filename)
 
 
-def resolve_bundle_dir(spec: OnnxBundleSpec, model_dir: str | os.PathLike[str] | None = None) -> Path:
+def resolve_bundle_dir(
+    spec: OnnxBundleSpec, model_dir: str | os.PathLike[str] | None = None
+) -> Path:
     override = os.getenv(spec.local_dir_env) if spec.local_dir_env else None
     if override:
         return Path(override).expanduser().resolve()
@@ -64,8 +66,12 @@ def ensure_hf_onnx_bundle(
     optional = {name: root / spec.repo_file(name) for name in spec.optional_files}
 
     if not _is_local_override(spec):
-        missing_required = [name for name, path in required.items() if not path.exists()]
-        missing_optional = [name for name, path in optional.items() if not path.exists()]
+        missing_required = [
+            name for name, path in required.items() if not path.exists()
+        ]
+        missing_optional = [
+            name for name, path in optional.items() if not path.exists()
+        ]
         for name in missing_required:
             _download_bundle_file(spec, root, name, download_file)
         for name in missing_optional:
@@ -74,10 +80,14 @@ def ensure_hf_onnx_bundle(
             except Exception:
                 continue
 
-    missing_after_download = [name for name, path in required.items() if not path.exists()]
+    missing_after_download = [
+        name for name, path in required.items() if not path.exists()
+    ]
     if missing_after_download:
         joined = ", ".join(missing_after_download)
-        raise ModelLoadError(f"模型文件缺失: {joined} (repo={spec.repo_id}, root={root})")
+        raise ModelLoadError(
+            f"模型文件缺失: {joined} (repo={spec.repo_id}, root={root})"
+        )
 
     files = {name: path for name, path in required.items()}
     files.update({name: path for name, path in optional.items() if path.exists()})
@@ -89,11 +99,17 @@ def ensure_onnx_bundle(
     source: str,
     model_dir: str | os.PathLike[str] | None = None,
 ) -> ResolvedOnnxBundle:
-    return ensure_hf_onnx_bundle(spec, create_download_file(source), model_dir=model_dir)
+    return ensure_hf_onnx_bundle(
+        spec, create_download_file(source), model_dir=model_dir
+    )
 
 
 def select_onnx_providers(available: list[str] | tuple[str, ...]) -> list[str]:
-    providers = [provider for provider in ["CUDAExecutionProvider", "CPUExecutionProvider"] if provider in available]
+    providers = [
+        provider
+        for provider in ["CUDAExecutionProvider", "CPUExecutionProvider"]
+        if provider in available
+    ]
     return providers or ["CPUExecutionProvider"]
 
 
@@ -126,10 +142,14 @@ def create_download_file(source: str) -> DownloadFile:
         try:
             from huggingface_hub import hf_hub_download
         except Exception as exc:  # pragma: no cover - import boundary
-            raise ModelLoadError("Hugging Face 下载依赖不可用，请重新安装项目依赖") from exc
+            raise ModelLoadError(
+                "Hugging Face 下载依赖不可用，请重新安装项目依赖"
+            ) from exc
 
         def download_file(*, repo_id: str, filename: str, local_dir: str) -> str:
-            return str(hf_hub_download(repo_id=repo_id, filename=filename, local_dir=local_dir))
+            return str(
+                hf_hub_download(repo_id=repo_id, filename=filename, local_dir=local_dir)
+            )
 
         return download_file
 
@@ -137,10 +157,16 @@ def create_download_file(source: str) -> DownloadFile:
         try:
             from modelscope.hub.file_download import model_file_download
         except Exception as exc:  # pragma: no cover - optional dependency boundary
-            raise ModelLoadError("ModelScope 下载需要安装模型依赖: uv sync --extra models") from exc
+            raise ModelLoadError(
+                "ModelScope 下载需要安装模型依赖: uv sync --extra models"
+            ) from exc
 
         def download_file(*, repo_id: str, filename: str, local_dir: str) -> str:
-            return str(model_file_download(model_id=repo_id, file_path=filename, local_dir=local_dir))
+            return str(
+                model_file_download(
+                    model_id=repo_id, file_path=filename, local_dir=local_dir
+                )
+            )
 
         return download_file
 

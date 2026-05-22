@@ -52,4 +52,7 @@ def test_iter_downloadable_onnx_bundle_specs_skips_external_models() -> None:
 
     bundles = iter_downloadable_onnx_bundle_specs(registry.configs, "modelscope")
 
-    assert [config.id for config, _ in bundles] == ["pixai_tagger_v0_9", "cl_tagger_1_02"]
+    assert [config.id for config, _ in bundles] == [
+        "pixai_tagger_v0_9",
+        "cl_tagger_1_02",
+    ]

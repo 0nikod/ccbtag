@@ -1,7 +1,7 @@
 import random
 
 prompts_b = {
-"long_thoughts_v2": """Your answer must contain 6 parts:
+    "long_thoughts_v2": """Your answer must contain 6 parts:
 <format>
 # 1. Thoughts about characters
 You need to think here and compare peoples/creatures that you see on the picture with given popular tags, or descriptions, or your memories for each characters to determine who is who.
@@ -16,7 +16,7 @@ Detailed and long description for the first character
 Same for each one (if present)
 </format>
 """,
-"long_thoughts": """Your answer must contain 6 parts:
+    "long_thoughts": """Your answer must contain 6 parts:
 <format>
 # 1. Thoughts about characters
 You need to think here and compare peoples/creatures that you see on the picture  with given popular tags, or descriptions, or your memories for each characters to determine who is who.
@@ -37,7 +37,7 @@ Mention every texts that you notice on image, including types (a speech bubble, 
 Give some info about objects on background, describe the location (if seen). Then mention effects (style, camera angle, clarity/blurrines, effects like depth of field, strange angle/forshortening, etc.)
 </format>
 """,
-"json": """Use json-style caption for given image with following structure:
+    "json": """Use json-style caption for given image with following structure:
 {"character" : "Description for character or object. Name (if defined), main details, features, position, pose, etc.",
 /or in case of multiple
 "character_1" : "Description for first"
@@ -53,9 +53,9 @@ Give some info about objects on background, describe the location (if seen). The
 }
 In special cases you can add extra keys.
 """,
-"long": """Make a caption for given image with natural text. Use 2 to 5 paragraphs. Make your description long and vivid, mentioning all the details.
+    "long": """Make a caption for given image with natural text. Use 2 to 5 paragraphs. Make your description long and vivid, mentioning all the details.
 """,
-"min_structured_md": """Your answer must contain 3 parts:
+    "min_structured_md": """Your answer must contain 3 parts:
 <format>
 # 1. Thoughts about characters
 You need to think here and compare peoples/creatures that you see on the picture  with given popular tags, or descriptions, or your memories for each characters to determine who is who.
@@ -74,7 +74,7 @@ Mention image effect, style, camera angle
 </format>
 In general stick to shorter descriptions.
 """,
-"json_comic": """Use json-style caption to describe to comin, stick to following structure:
+    "json_comic": """Use json-style caption to describe to comin, stick to following structure:
 {
 "comic_format": "menation the format, for example Comic of N frames",
 "1st_frame": "Main description of the content for fist frame",
@@ -87,7 +87,7 @@ In general stick to shorter descriptions.
 "meaning": "Try to guess general mood, vibe and meaning of the comic"
 }
 """,
-"md_comic": """Use markdown format to describe to comic, 5 parts are recommended:
+    "md_comic": """Use markdown format to describe to comic, 5 parts are recommended:
 <format>
 # 1. Thoughts about characters
 You need to think here and compare peoples/creatures that you see on the picture with given popular tags, or descriptions, or your memories for each characters to determine who is who.
@@ -105,7 +105,7 @@ Same for each frame.
 Here you should write general desciption and some other info about the image.
 </format>
 """,
-"min_structured_json": """
+    "min_structured_json": """
 Use json-style caption for given image with following structure:
 {"General" : "Here you need to come up with general/common information about picture, overall composition. Stick to shorter phrases and tags instead of long purple prose. Avoid bullets and markdown, write in plain text.",
 "character_1 (put here the name if any)" : "Description of first character."
@@ -118,7 +118,7 @@ Use json-style caption for given image with following structure:
 }
 Prefere shorter description and tags.
 """,
-"chroma-style": """Your task is to describe the picture in very detail using a structure of 4 parts.
+    "chroma-style": """Your task is to describe the picture in very detail using a structure of 4 parts.
 ### 1. Regular Summary:
 [A one-paragraph summary of the image. The paragraph should mention all individual parts/things/characters/etc.]
 ### 2. Individual Parts:
@@ -128,12 +128,12 @@ Prefere shorter description and tags.
 ### 4. DeviantArt Commission Request
 [Write a description as if you're commissioning this *exact* image via someone who is currently taking requests.]
 """,
-"short":"""The caption for image should be quite short without long purple prose and slop. Cover main objects and details.
+    "short": """The caption for image should be quite short without long purple prose and slop. Cover main objects and details.
 """,
 }
 
 prompts_names_only = {
-    "long_thoughts_v2":True,
+    "long_thoughts_v2": True,
     "long_thoughts": True,
     "json": False,
     "long": False,
@@ -142,8 +142,8 @@ prompts_names_only = {
     "min_structured_md": True,
     "min_structured_json": False,
     "chroma-style": False,
-    "short":False,
-    }
+    "short": False,
+}
 
 
 def make_user_query(
@@ -157,75 +157,100 @@ def make_user_query(
     underscores_replace=False,
     shuffle_tags=True,
 ):
-    tags = list(item.get('tags', []))
+    tags = list(item.get("tags", []))
     if shuffle_tags:
         random.shuffle(tags)
     if underscores_replace:
-        tags = [a.replace('_', ' ') if len(a)>3 else a for a in tags]
-        tags_string = ', '.join(tags)
+        tags = [a.replace("_", " ") if len(a) > 3 else a for a in tags]
+        tags_string = ", ".join(tags)
     else:
-        tags_string = ' '.join(tags)
-    
-    user_request = '# Captioning format:\n'
+        tags_string = " ".join(tags)
+
+    user_request = "# Captioning format:\n"
     user_request += prompts_b[c_type]
-    user_request += '\n'
-    
+    user_request += "\n"
+
     if add_tags:
         user_request += f"# Booru tags for the image\n[{tags_string}]\n\n"
-    
-    if use_names: #Имена персонажей
+
+    if use_names:  # Имена персонажей
         if add_characters:
-            chars_tags = item.get('characters',[])
+            chars_tags = item.get("characters", [])
             if underscores_replace:
-                chars_tags = [a.replace('_', ' ') for a in chars_tags]
-                chars_string = ', '.join(chars_tags)
+                chars_tags = [a.replace("_", " ") for a in chars_tags]
+                chars_string = ", ".join(chars_tags)
             else:
-                chars_string = ' '.join(chars_tags)
-            
+                chars_string = " ".join(chars_tags)
+
             user_request += f"# Characters on picture:\nHere are names/tags for characters from the picture, make sure to use them: [{chars_string}].\n\n"
-            
-            chars_popular_tags = (item.get('char_p_tags',"{'chars':{},'skins':{}}"))
-            chars_description = (item.get('char_descr',"{'chars':{},'skins':{}}"))
-            
-            if len(chars_popular_tags['chars']) > 0 and (add_char_tags or add_description):
-                
+
+            chars_popular_tags = item.get("char_p_tags", "{'chars':{},'skins':{}}")
+            chars_description = item.get("char_descr", "{'chars':{},'skins':{}}")
+
+            if len(chars_popular_tags["chars"]) > 0 and (
+                add_char_tags or add_description
+            ):
                 user_request += "# Known traits for characters\n"
                 char_underscores = underscores_replace
-                
-                if add_char_tags:
-                    user_request += "Here are popular tags for each characters on picture:\n"
-                    
-                    for c_name, c_tags in chars_popular_tags['chars'].items():
-                        name = c_name.replace('_',' ') if char_underscores else c_name
-                        tags_s = (', '.join([a.replace('_', ' ') if len(a)>3 else a for a in c_tags]) if char_underscores else
-                                ' '.join(c_tags))
-                        user_request += f"{name}: [{tags_s}]\n"
-                    if len(chars_popular_tags['skins']) > 0:
-                        user_request += "Extra tags for characters skins:\n"
-                        for c_name, c_tags in chars_popular_tags['skins'].items():
-                            name = c_name.replace('_',' ') if char_underscores else c_name
-                            tags_s = (', '.join([a.replace('_', ' ') if len(a)>3 else a for a in c_tags]) if char_underscores else
-                                    ' '.join(c_tags))
-                            user_request += f"{name}: [{tags_s}]\n"
-                        
-                elif add_description:
 
+                if add_char_tags:
+                    user_request += (
+                        "Here are popular tags for each characters on picture:\n"
+                    )
+
+                    for c_name, c_tags in chars_popular_tags["chars"].items():
+                        name = c_name.replace("_", " ") if char_underscores else c_name
+                        tags_s = (
+                            ", ".join(
+                                [
+                                    a.replace("_", " ") if len(a) > 3 else a
+                                    for a in c_tags
+                                ]
+                            )
+                            if char_underscores
+                            else " ".join(c_tags)
+                        )
+                        user_request += f"{name}: [{tags_s}]\n"
+                    if len(chars_popular_tags["skins"]) > 0:
+                        user_request += "Extra tags for characters skins:\n"
+                        for c_name, c_tags in chars_popular_tags["skins"].items():
+                            name = (
+                                c_name.replace("_", " ") if char_underscores else c_name
+                            )
+                            tags_s = (
+                                ", ".join(
+                                    [
+                                        a.replace("_", " ") if len(a) > 3 else a
+                                        for a in c_tags
+                                    ]
+                                )
+                                if char_underscores
+                                else " ".join(c_tags)
+                            )
+                            user_request += f"{name}: [{tags_s}]\n"
+
+                elif add_description:
                     user_request += "Here are general descriptions for each characters on the picture:\n"
-                    for c_name, c_descr in chars_description['chars'].items():
-                        name = c_name.replace('_',' ') if char_underscores else c_name
+                    for c_name, c_descr in chars_description["chars"].items():
+                        name = c_name.replace("_", " ") if char_underscores else c_name
                         user_request += f"## {name}\n{c_descr}\n\n"
-                    if len(chars_description['skins']) > 0:
+                    if len(chars_description["skins"]) > 0:
                         user_request += "Here are also descriptions for specific skin of characters:\n"
-                        for c_name, c_descr in chars_description['skins'].items():
-                            name = c_name.replace('_',' ') if char_underscores else c_name
+                        for c_name, c_descr in chars_description["skins"].items():
+                            name = (
+                                c_name.replace("_", " ") if char_underscores else c_name
+                            )
                             user_request += f"## {name}\n{c_descr}\n\n"
         else:
             user_request += "# Characters on picture:\nTry to recognize the characters in the picture and use their names.\n"
-            
-        user_request += '\n'
+
+        user_request += "\n"
     else:
-        user_request += "# Characters on picture:\nAvoid to guess names for characters.\n"
-    
+        user_request += (
+            "# Characters on picture:\nAvoid to guess names for characters.\n"
+        )
+
     return user_request
-        
+
+
 system_prompt = "You are image captioning expert. Describe user's picture according to requested format and instructions."

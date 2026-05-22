@@ -4,7 +4,12 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Iterable
 
-from app.core.caption import CaptionParts, join_caption, parse_caption_text, split_tag_text
+from app.core.caption import (
+    CaptionParts,
+    join_caption,
+    parse_caption_text,
+    split_tag_text,
+)
 from app.core.file_io import (
     is_image_path,
     metadata_candidates,
@@ -79,7 +84,9 @@ class ImageRecord:
         if tag_manual is None:
             tag_manual = payload.get("tag_status") == EDITED or (edited and bool(tags))
         if nl_manual is None:
-            nl_manual = payload.get("nl_status") == EDITED or (edited and bool(nl.strip()))
+            nl_manual = payload.get("nl_status") == EDITED or (
+                edited and bool(nl.strip())
+            )
 
         payload["tag_manual"] = bool(tag_manual)
         payload["nl_manual"] = bool(nl_manual)
@@ -96,7 +103,9 @@ class PersistedRecordState:
     has_metadata: bool = False
 
 
-def record_from_image(image_path: Path, metadata_location: str = "caption_json") -> ImageRecord:
+def record_from_image(
+    image_path: Path, metadata_location: str = "caption_json"
+) -> ImageRecord:
     txt_path = txt_path_for_image(image_path)
     metadata_path = metadata_path_for_image(image_path, metadata_location)
     state = _load_record_state(image_path, metadata_location)
@@ -117,7 +126,9 @@ def record_from_image(image_path: Path, metadata_location: str = "caption_json")
     )
 
 
-def scan_dataset(folder: str | Path, metadata_location: str = "caption_json") -> list[ImageRecord]:
+def scan_dataset(
+    folder: str | Path, metadata_location: str = "caption_json"
+) -> list[ImageRecord]:
     root = Path(folder).expanduser().resolve()
     if not root.exists() or not root.is_dir():
         raise FileNotFoundError(f"图片文件夹不存在: {root}")
@@ -191,7 +202,9 @@ def set_generated_nl(record: ImageRecord, nl: str) -> ImageRecord:
     return record
 
 
-def set_error(record: ImageRecord, message: str, task: str | None = None) -> ImageRecord:
+def set_error(
+    record: ImageRecord, message: str, task: str | None = None
+) -> ImageRecord:
     record.error = message
     if task == "tag":
         record.tag_status = ERROR
@@ -200,7 +213,9 @@ def set_error(record: ImageRecord, message: str, task: str | None = None) -> Ima
     return record
 
 
-def save_record(record: ImageRecord, metadata_location: str = "caption_json") -> ImageRecord:
+def save_record(
+    record: ImageRecord, metadata_location: str = "caption_json"
+) -> ImageRecord:
     image_path = Path(record.image_path)
     _backfill_manual_flags(record)
     record.txt_path = str(txt_path_for_image(image_path))
@@ -237,12 +252,16 @@ def deserialize_records(data: list[dict[str, Any]] | None) -> list[ImageRecord]:
     return [ImageRecord.from_dict(item) for item in (data or [])]
 
 
-def _load_record_state(image_path: Path, metadata_location: str) -> PersistedRecordState:
+def _load_record_state(
+    image_path: Path, metadata_location: str
+) -> PersistedRecordState:
     for candidate in metadata_candidates(image_path, metadata_location):
         metadata = read_json(candidate)
         if metadata:
             return _state_from_metadata(metadata)
-    return PersistedRecordState(parts=parse_caption_text(read_text(txt_path_for_image(image_path))))
+    return PersistedRecordState(
+        parts=parse_caption_text(read_text(txt_path_for_image(image_path)))
+    )
 
 
 def _parts_from_metadata(metadata: dict[str, Any]) -> CaptionParts:
@@ -274,14 +293,17 @@ def _state_from_metadata(metadata: dict[str, Any]) -> PersistedRecordState:
         tag_manual = bool(metadata.get("tag_manual"))
     else:
         tag_manual = any(
-            isinstance(item, dict) and str(item.get("source", "")).strip().lower() == "manual"
+            isinstance(item, dict)
+            and str(item.get("source", "")).strip().lower() == "manual"
             for item in (raw_tags if isinstance(raw_tags, list) else [])
         ) or (edited and bool(parts.tags))
 
     if "nl_manual" in metadata:
         nl_manual = bool(metadata.get("nl_manual"))
     elif isinstance(raw_nl, dict):
-        nl_manual = str(raw_nl.get("source", "")).strip().lower() == "manual" or (edited and bool(parts.nl))
+        nl_manual = str(raw_nl.get("source", "")).strip().lower() == "manual" or (
+            edited and bool(parts.nl)
+        )
     else:
         nl_manual = edited and bool(parts.nl)
 

@@ -17,7 +17,11 @@ def resolve_model_dir(value: str | os.PathLike[str] | None = None) -> Path:
 
 
 def resolve_model_source(value: str | None = None) -> str:
-    configured = value if value is not None else os.getenv("CCBTAG_MODEL_SOURCE", DEFAULT_MODEL_SOURCE)
+    configured = (
+        value
+        if value is not None
+        else os.getenv("CCBTAG_MODEL_SOURCE", DEFAULT_MODEL_SOURCE)
+    )
     source = str(configured).strip().lower()
     if source not in SUPPORTED_MODEL_SOURCES:
         joined = ", ".join(SUPPORTED_MODEL_SOURCES)

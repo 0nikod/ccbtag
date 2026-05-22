@@ -41,7 +41,11 @@ class AppConfig:
 
 
 def load_app_config(config_root: str | Path | None = None) -> AppConfig:
-    root = Path(config_root) if config_root is not None else Path(__file__).resolve().parents[1] / "config"
+    root = (
+        Path(config_root)
+        if config_root is not None
+        else Path(__file__).resolve().parents[1] / "config"
+    )
     rules_path = root / "rules.json"
     data = _read_json(rules_path)
     tag = config_from_rules(data)
@@ -61,11 +65,19 @@ def load_app_config(config_root: str | Path | None = None) -> AppConfig:
             joiner=str(caption_data.get("joiner", ". ")),
             save_txt=bool(caption_data.get("save_txt", True)),
             save_metadata_json=bool(caption_data.get("save_metadata_json", True)),
-            metadata_location=str(caption_data.get("metadata_location", "caption_json")),
+            metadata_location=str(
+                caption_data.get("metadata_location", "caption_json")
+            ),
         ),
         ui=UiDefaults(
-            metadata_location=str(caption_data.get("metadata_location", "caption_json")),
-            nl_endpoint=str(caption_data.get("nl_endpoint", "http://127.0.0.1:8000/v1/chat/completions")),
+            metadata_location=str(
+                caption_data.get("metadata_location", "caption_json")
+            ),
+            nl_endpoint=str(
+                caption_data.get(
+                    "nl_endpoint", "http://127.0.0.1:8000/v1/chat/completions"
+                )
+            ),
             nl_model_name=str(caption_data.get("nl_model_name", "gpt-3.5-turbo")),
             nl_api_key=str(caption_data.get("nl_api_key", "")),
             shuffle_tags=bool(caption_data.get("shuffle_tags", True)),

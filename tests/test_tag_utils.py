@@ -3,7 +3,6 @@ import unittest
 from app.core.tag_utils import (
     TagRuleConfig,
     add_tags,
-    apply_tag_rules,
     delete_tags,
     prediction_dicts_to_tags,
     replace_tags,
@@ -29,12 +28,21 @@ class TagUtilsTest(unittest.TestCase):
             {"tag": "solo", "score": 0.7},
             {"tag": "low score", "score": 0.1},
         ]
-        self.assertEqual(prediction_dicts_to_tags(predictions, rules()), ["gray hair", "solo"])
+        self.assertEqual(
+            prediction_dicts_to_tags(predictions, rules()), ["gray hair", "solo"]
+        )
 
     def test_delete_replace_and_add_tags(self) -> None:
-        self.assertEqual(delete_tags("1girl, solo, watermark", "solo", rules()), "1girl")
-        self.assertEqual(replace_tags("grey hair, solo", "grey hair", "gray hair", rules()), "gray hair, solo")
-        self.assertEqual(add_tags("solo", "1girl", rules(), prepend=True), "1girl, solo")
+        self.assertEqual(
+            delete_tags("1girl, solo, watermark", "solo", rules()), "1girl"
+        )
+        self.assertEqual(
+            replace_tags("grey hair, solo", "grey hair", "gray hair", rules()),
+            "gray hair, solo",
+        )
+        self.assertEqual(
+            add_tags("solo", "1girl", rules(), prepend=True), "1girl, solo"
+        )
 
 
 if __name__ == "__main__":

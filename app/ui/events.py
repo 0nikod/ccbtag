@@ -8,8 +8,6 @@ import gradio as gr
 
 from app.core.caption import join_caption, split_tag_text, tag_text
 from app.core.dataset import (
-    EDITED,
-    EMPTY,
     ImageRecord,
     deserialize_records,
     save_record,
@@ -80,7 +78,9 @@ def default_nl_endpoint() -> str:
 def default_nl_model_name() -> str:
     configs = REGISTRY.list_captioners()
     if configs:
-        return str(configs[0].extras.get("default_model_name", UI_DEFAULTS.nl_model_name))
+        return str(
+            configs[0].extras.get("default_model_name", UI_DEFAULTS.nl_model_name)
+        )
     return UI_DEFAULTS.nl_model_name
 
 
@@ -109,7 +109,9 @@ def select_record(
     nl_text: str,
     event: gr.SelectData,
 ) -> tuple[Any, ...]:
-    return _select_record(records_data, current_index, tags_text, nl_text, _event_index(event))
+    return _select_record(
+        records_data, current_index, tags_text, nl_text, _event_index(event)
+    )
 
 
 def _select_record(
@@ -160,7 +162,9 @@ def preview_caption(tags_text: str, nl_text: str) -> str:
 
 
 def apply_rules_to_current(tags_text: str, nl_text: str) -> tuple[str, str]:
-    cleaned = tag_text(apply_tag_rules(split_tag_text(tags_text), TAG_RULES), TAG_RULES.separator)
+    cleaned = tag_text(
+        apply_tag_rules(split_tag_text(tags_text), TAG_RULES), TAG_RULES.separator
+    )
     return cleaned, join_caption(cleaned, nl_text, joiner=CAPTION_RULES.joiner)
 
 
@@ -185,7 +189,10 @@ def generate_tag(
     update_record_text(record, tags_text, nl_text)
     try:
         model = REGISTRY.get_by_display("tag", tag_model_display)
-        predictions = [item.to_dict() for item in model.predict(record.image_path, threshold=TAG_RULES.threshold)]
+        predictions = [
+            item.to_dict()
+            for item in model.predict(record.image_path, threshold=TAG_RULES.threshold)
+        ]
         tags = prediction_dicts_to_tags(predictions, TAG_RULES)
         set_generated_tags(record, tags, predictions)
         message = f"Tag 生成完成: {record.file_name}"
@@ -245,7 +252,9 @@ def generate_tag_and_nl(
     nl_text: str,
     shuffle_tags: bool = True,
 ) -> tuple[Any, ...]:
-    payload = generate_tag(records_data, current_index, tag_model_display, tags_text, nl_text)
+    payload = generate_tag(
+        records_data, current_index, tag_model_display, tags_text, nl_text
+    )
     updated_records = payload[0]
     updated_tags = payload[3]
     updated_nl = payload[4]
@@ -329,7 +338,15 @@ def batch_generate_nl(
         return [], [], image_preview_html(None), "", "", "", 0, "没有图片"
     index = _sync_current_form(records, current_index, tags_text, nl_text)
     message = _batch_generate(
-        records, None, nl_model_display, skip_edited, progress, nl_endpoint, nl_model_name, nl_api_key, shuffle_tags
+        records,
+        None,
+        nl_model_display,
+        skip_edited,
+        progress,
+        nl_endpoint,
+        nl_model_name,
+        nl_api_key,
+        shuffle_tags,
     )
     return _selection_payload(records, index, message)
 
@@ -353,7 +370,15 @@ def batch_generate_both(
         return [], [], image_preview_html(None), "", "", "", 0, "没有图片"
     index = _sync_current_form(records, current_index, tags_text, nl_text)
     message = _batch_generate(
-        records, tag_model_display, nl_model_display, skip_edited, progress, nl_endpoint, nl_model_name, nl_api_key, shuffle_tags
+        records,
+        tag_model_display,
+        nl_model_display,
+        skip_edited,
+        progress,
+        nl_endpoint,
+        nl_model_name,
+        nl_api_key,
+        shuffle_tags,
     )
     return _selection_payload(records, index, message)
 
@@ -406,7 +431,9 @@ def batch_add_tag(
         return [], [], image_preview_html(None), "", "", "", 0, "没有图片"
     index = _sync_current_form(records, current_index, tags_text, nl_text)
     for record in records:
-        next_tags = add_tags(tag_text(record.tags), add_text, TAG_RULES, prepend=prepend)
+        next_tags = add_tags(
+            tag_text(record.tags), add_text, TAG_RULES, prepend=prepend
+        )
         update_record_text(record, next_tags, record.nl)
     return _selection_payload(records, index, "批量添加 Tag 完成")
 
@@ -424,16 +451,27 @@ def _batch_generate(
 ) -> str:
     total = len(records)
     errors = 0
-    tag_model = REGISTRY.get_by_display("tag", tag_model_display) if tag_model_display else None
-    nl_model = REGISTRY.get_by_display("nl", nl_model_display) if nl_model_display else None
+    tag_model = (
+        REGISTRY.get_by_display("tag", tag_model_display) if tag_model_display else None
+    )
+    nl_model = (
+        REGISTRY.get_by_display("nl", nl_model_display) if nl_model_display else None
+    )
     for index, record in enumerate(records):
         if progress:
-            progress((index + 1) / total, desc=f"{index + 1}/{total} {record.file_name}")
+            progress(
+                (index + 1) / total, desc=f"{index + 1}/{total} {record.file_name}"
+            )
         if skip_edited and record.edited:
             continue
         try:
             if tag_model:
-                predictions = [item.to_dict() for item in tag_model.predict(record.image_path, threshold=TAG_RULES.threshold)]
+                predictions = [
+                    item.to_dict()
+                    for item in tag_model.predict(
+                        record.image_path, threshold=TAG_RULES.threshold
+                    )
+                ]
                 tags = prediction_dicts_to_tags(predictions, TAG_RULES)
                 set_generated_tags(record, tags, predictions)
             if nl_model:
@@ -466,7 +504,9 @@ def _current_record(
     return records, records[index], index
 
 
-def _selection_payload(records: list[ImageRecord], index: int, message: str) -> tuple[Any, ...]:
+def _selection_payload(
+    records: list[ImageRecord], index: int, message: str
+) -> tuple[Any, ...]:
     return (
         serialize_records(records),
         table_rows(records),
@@ -479,7 +519,9 @@ def _selection_payload(records: list[ImageRecord], index: int, message: str) -> 
     )
 
 
-def _record_payload(records: list[ImageRecord], index: int, message: str) -> tuple[Any, ...]:
+def _record_payload(
+    records: list[ImageRecord], index: int, message: str
+) -> tuple[Any, ...]:
     record = records[index]
     return (
         serialize_records(records),

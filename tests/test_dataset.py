@@ -31,7 +31,9 @@ class DatasetTest(unittest.TestCase):
             root = Path(tmp)
             image_path = root / "0001.png"
             write_image(image_path)
-            (root / "0001.txt").write_text("1girl, solo. A girl is standing.\n", encoding="utf-8")
+            (root / "0001.txt").write_text(
+                "1girl, solo. A girl is standing.\n", encoding="utf-8"
+            )
 
             records = scan_dataset(root)
 
@@ -73,8 +75,14 @@ class DatasetTest(unittest.TestCase):
 
             save_record(record, "caption_json")
 
-            metadata = json.loads((root / "caption_json" / "0001.caption.json").read_text(encoding="utf-8"))
-            self.assertEqual(metadata["tags"], [{"name": "solo", "score": None, "source": "manual"}])
+            metadata = json.loads(
+                (root / "caption_json" / "0001.caption.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            self.assertEqual(
+                metadata["tags"], [{"name": "solo", "score": None, "source": "manual"}]
+            )
             self.assertTrue(metadata["tag_manual"])
             self.assertFalse(metadata["nl_manual"])
 
@@ -100,7 +108,9 @@ class DatasetTest(unittest.TestCase):
         self.assertTrue(record.dirty)
         self.assertEqual(record.overall_status, "未保存")
 
-    def test_model_regeneration_clears_manual_flag_when_no_manual_section_remains(self) -> None:
+    def test_model_regeneration_clears_manual_flag_when_no_manual_section_remains(
+        self,
+    ) -> None:
         record = ImageRecord(
             image_path="a.png",
             txt_path="a.txt",
@@ -113,7 +123,9 @@ class DatasetTest(unittest.TestCase):
             edited=True,
         )
 
-        set_generated_tags(record, ["solo"], [{"name": "solo", "score": 0.9, "source": "model"}])
+        set_generated_tags(
+            record, ["solo"], [{"name": "solo", "score": 0.9, "source": "model"}]
+        )
         set_generated_nl(record, "A girl is sitting.")
 
         self.assertEqual(record.tag_status, GENERATED)

@@ -78,7 +78,9 @@ def test_package_cli_parse_prefers_model_source_env(monkeypatch) -> None:
 
 def test_package_cli_explicit_source_overrides_env(monkeypatch) -> None:
     monkeypatch.setenv("CCBTAG_MODEL_SOURCE", "hf")
-    monkeypatch.setattr("sys.argv", ["ccbtag-download-models", "--source", "modelscope"])
+    monkeypatch.setattr(
+        "sys.argv", ["ccbtag-download-models", "--source", "modelscope"]
+    )
 
     args = parse_download_models_args()
 
@@ -179,7 +181,9 @@ def test_bundle_loader_downloads_only_missing_files(tmp_path: Path) -> None:
     assert bundle.require("selected_tags.csv").exists()
 
 
-def test_cl_tagger_override_bypasses_shared_model_root(monkeypatch, tmp_path: Path) -> None:
+def test_cl_tagger_override_bypasses_shared_model_root(
+    monkeypatch, tmp_path: Path
+) -> None:
     spec = OnnxBundleSpec(
         repo_id="cella110n/cl_tagger",
         required_files=("model.onnx",),
@@ -215,7 +219,9 @@ def test_open_onnx_session_reuses_cached_session(tmp_path: Path) -> None:
     second = open_onnx_session(model_path, FakeOrt, session_factory=fake_factory)
 
     assert first is second
-    assert calls == [(str(model_path), ["CUDAExecutionProvider", "CPUExecutionProvider"])]
+    assert calls == [
+        (str(model_path), ["CUDAExecutionProvider", "CPUExecutionProvider"])
+    ]
 
 
 def test_close_onnx_session_removes_from_cache(tmp_path: Path) -> None:
@@ -247,7 +253,10 @@ def test_download_models_main_uses_default_modelscope(monkeypatch) -> None:
 
     monkeypatch.delenv("CCBTAG_MODEL_SOURCE", raising=False)
     monkeypatch.setattr("sys.argv", ["ccbtag-download-models"])
-    monkeypatch.setattr("app.cli.download_model_bundles", lambda model_dir, source: calls.append((model_dir, source)))
+    monkeypatch.setattr(
+        "app.cli.download_model_bundles",
+        lambda model_dir, source: calls.append((model_dir, source)),
+    )
 
     download_models_main()
 

@@ -20,7 +20,15 @@ class ModelConfig:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "ModelConfig":
-        required = ["id", "display_name", "task", "source", "backend", "model_path", "entry"]
+        required = [
+            "id",
+            "display_name",
+            "task",
+            "source",
+            "backend",
+            "model_path",
+            "entry",
+        ]
         missing = [key for key in required if key not in data]
         if missing:
             raise ValueError(f"模型配置缺少字段: {', '.join(missing)}")
@@ -44,7 +52,12 @@ class TagPrediction:
     source: str
 
     def to_dict(self) -> dict[str, Any]:
-        return {"tag": self.tag, "name": self.tag, "score": self.score, "source": self.source}
+        return {
+            "tag": self.tag,
+            "name": self.tag,
+            "score": self.score,
+            "source": self.source,
+        }
 
 
 class ModelError(RuntimeError):
@@ -97,5 +110,7 @@ class BaseTagger(BaseModel):
 class BaseCaptioner(BaseModel):
     task = "nl"
 
-    def predict(self, image: str | Path, tags: list[str] | None = None, **kwargs: Any) -> str:
+    def predict(
+        self, image: str | Path, tags: list[str] | None = None, **kwargs: Any
+    ) -> str:
         raise NotImplementedError

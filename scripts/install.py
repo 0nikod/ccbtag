@@ -12,7 +12,9 @@ def run(command: list[str], env: dict[str, str]) -> None:
 
 def main() -> None:
     if sys.version_info[:2] != (3, 12):
-        raise SystemExit("请使用 Python 3.12 运行安装脚本，例如: uv run python scripts/install.py")
+        raise SystemExit(
+            "请使用 Python 3.12 运行安装脚本，例如: uv run python scripts/install.py"
+        )
 
     env = os.environ.copy()
     run(["uv", "sync", "--extra", "models", "--group", "dev"], env)

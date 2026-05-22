@@ -52,7 +52,9 @@ def metadata_path_for_image(image_path: Path, location: str = "caption_json") ->
     return image_path.parent / "caption_json" / f"{image_path.stem}.caption.json"
 
 
-def metadata_candidates(image_path: Path, preferred_location: str = "caption_json") -> list[Path]:
+def metadata_candidates(
+    image_path: Path, preferred_location: str = "caption_json"
+) -> list[Path]:
     preferred = metadata_path_for_image(image_path, preferred_location)
     fallbacks = [
         metadata_path_for_image(image_path, "caption_json"),

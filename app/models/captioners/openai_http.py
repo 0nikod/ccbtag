@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import base64
-import json
 import mimetypes
 import os
 from pathlib import Path
@@ -24,31 +23,39 @@ class OpenAIHttpCaptioner(BaseCaptioner):
         default_endpoint = str(
             self.config.extras.get(
                 "default_endpoint",
-                self.config.extras.get("ui_default_endpoint", "http://127.0.0.1:8000/v1/chat/completions"),
+                self.config.extras.get(
+                    "ui_default_endpoint", "http://127.0.0.1:8000/v1/chat/completions"
+                ),
             )
         )
-        default_model = str(self.config.extras.get("default_model_name", self.config.model_path))
+        default_model = str(
+            self.config.extras.get("default_model_name", self.config.model_path)
+        )
 
         self.endpoint = os.getenv(endpoint_env, default_endpoint)
         self.model = os.getenv(model_env, default_model)
         self.api_key = os.getenv(api_key_env, "sk-dummy")
-        self.timeout = float(os.getenv(str(self.config.extras.get("timeout_env", "OPENAI_TIMEOUT")), "120"))
+        self.timeout = float(
+            os.getenv(
+                str(self.config.extras.get("timeout_env", "OPENAI_TIMEOUT")), "120"
+            )
+        )
 
         if not self.endpoint:
             raise ModelLoadError(f"未配置 NL 服务端点: {endpoint_env}")
 
         try:
             self.client = openai.OpenAI(
-                base_url=self.endpoint,
-                api_key=self.api_key,
-                timeout=self.timeout
+                base_url=self.endpoint, api_key=self.api_key, timeout=self.timeout
             )
         except Exception as exc:
             raise ModelLoadError(f"OpenAI 客户端初始化失败: {exc}") from exc
 
         self.loaded = True
 
-    def predict(self, image: str | Path, tags: list[str] | None = None, **kwargs: Any) -> str:
+    def predict(
+        self, image: str | Path, tags: list[str] | None = None, **kwargs: Any
+    ) -> str:
         path = self._ensure_image_path(image)
         user_prompt = self._prompt(tags or [], kwargs)
 
@@ -57,7 +64,9 @@ class OpenAIHttpCaptioner(BaseCaptioner):
         api_key = str(kwargs.get("api_key") or self.api_key)
 
         if endpoint != self.endpoint or api_key != self.api_key:
-            client = openai.OpenAI(base_url=endpoint, api_key=api_key, timeout=self.timeout)
+            client = openai.OpenAI(
+                base_url=endpoint, api_key=api_key, timeout=self.timeout
+            )
             client_used = client
         else:
             client_used = self.client
@@ -66,29 +75,29 @@ class OpenAIHttpCaptioner(BaseCaptioner):
             response = client_used.chat.completions.create(
                 model=model,
                 messages=[
-                    {
-                        "role": "system",
-                        "content": system_prompt
-                    },
+                    {"role": "system", "content": system_prompt},
                     {
                         "role": "user",
                         "content": [
                             {"type": "text", "text": user_prompt},
-                            {"type": "image_url", "image_url": {"url": self._data_url(path)}},
+                            {
+                                "type": "image_url",
+                                "image_url": {"url": self._data_url(path)},
+                            },
                         ],
-                    }
+                    },
                 ],
                 max_tokens=int(kwargs.get("max_length", 300)),
                 temperature=float(kwargs.get("temperature", 0.2)),
             )
-            
+
             if not response.choices:
                 raise ModelInferenceError("NL 服务返回缺少 choices")
-                
+
             content = response.choices[0].message.content
             if content is None:
                 raise ModelInferenceError("NL 服务返回缺少文本内容")
-                
+
             return content.strip()
         except openai.OpenAIError as exc:
             raise ModelInferenceError(f"NL 服务调用失败: {exc}") from exc
@@ -106,7 +115,7 @@ class OpenAIHttpCaptioner(BaseCaptioner):
             "tags": tags,
             "characters": kwargs.get("characters", []),
             "char_p_tags": kwargs.get("char_p_tags", {"chars": {}, "skins": {}}),
-            "char_descr": kwargs.get("char_descr", {"chars": {}, "skins": {}})
+            "char_descr": kwargs.get("char_descr", {"chars": {}, "skins": {}}),
         }
 
         return make_user_query(
@@ -125,4 +134,3 @@ class OpenAIHttpCaptioner(BaseCaptioner):
         mime_type = mimetypes.guess_type(path.name)[0] or "image/png"
         encoded = base64.b64encode(path.read_bytes()).decode("ascii")
         return f"data:{mime_type};base64,{encoded}"
-

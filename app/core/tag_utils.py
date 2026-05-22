@@ -75,8 +75,14 @@ def prediction_dicts_to_tags(
 
 
 def delete_tags(tags_text: str, delete_text: str, rules: TagRuleConfig) -> str:
-    delete_set = {normalize_tag(tag, rules).casefold() for tag in split_tag_text(delete_text)}
-    kept = [tag for tag in split_tag_text(tags_text) if normalize_tag(tag, rules).casefold() not in delete_set]
+    delete_set = {
+        normalize_tag(tag, rules).casefold() for tag in split_tag_text(delete_text)
+    }
+    kept = [
+        tag
+        for tag in split_tag_text(tags_text)
+        if normalize_tag(tag, rules).casefold() not in delete_set
+    ]
     return tag_text(apply_tag_rules(kept, rules), rules.separator)
 
 
@@ -93,7 +99,9 @@ def replace_tags(tags_text: str, old: str, new: str, rules: TagRuleConfig) -> st
     return tag_text(apply_tag_rules(replaced, rules), rules.separator)
 
 
-def add_tags(tags_text: str, add_text: str, rules: TagRuleConfig, prepend: bool = False) -> str:
+def add_tags(
+    tags_text: str, add_text: str, rules: TagRuleConfig, prepend: bool = False
+) -> str:
     current = split_tag_text(tags_text)
     additions = split_tag_text(add_text)
     combined = additions + current if prepend else current + additions

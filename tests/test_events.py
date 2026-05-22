@@ -13,7 +13,9 @@ def test_open_folder_failure_matches_open_outputs() -> None:
 
 
 def test_empty_batch_actions_match_open_outputs() -> None:
-    assert len(events.batch_generate_tags([], 0, "", "", "PixAI Tagger v0.9", True)) == 8
+    assert (
+        len(events.batch_generate_tags([], 0, "", "", "PixAI Tagger v0.9", True)) == 8
+    )
     assert len(events.batch_delete_tag([], 0, "", "", "solo")) == 8
 
 
@@ -42,7 +44,12 @@ class _Prediction:
         self.score = score
 
     def to_dict(self) -> dict[str, object]:
-        return {"tag": self.tag, "name": self.tag, "score": self.score, "source": "test"}
+        return {
+            "tag": self.tag,
+            "name": self.tag,
+            "score": self.score,
+            "source": "test",
+        }
 
 
 class _Registry:
@@ -74,7 +81,9 @@ def test_select_record_persists_unsaved_current_form(tmp_path: Path) -> None:
     assert payload[4] == ""
 
 
-def test_batch_generate_tags_skips_current_unsaved_manual_edit(tmp_path: Path, monkeypatch) -> None:
+def test_batch_generate_tags_skips_current_unsaved_manual_edit(
+    tmp_path: Path, monkeypatch
+) -> None:
     write_image(tmp_path / "0001.png")
     write_image(tmp_path / "0002.png")
     records = scan_dataset(tmp_path)

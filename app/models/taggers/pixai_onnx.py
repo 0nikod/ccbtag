@@ -9,8 +9,17 @@ import numpy as np
 from PIL import Image
 
 from app.core.model_paths import resolve_model_source
-from app.core.onnx_bundles import close_onnx_session, ensure_onnx_bundle, open_onnx_session
-from app.models.base import BaseTagger, ModelInferenceError, ModelLoadError, TagPrediction
+from app.core.onnx_bundles import (
+    close_onnx_session,
+    ensure_onnx_bundle,
+    open_onnx_session,
+)
+from app.models.base import (
+    BaseTagger,
+    ModelInferenceError,
+    ModelLoadError,
+    TagPrediction,
+)
 from app.models.downloads import build_pixai_bundle_spec
 
 
@@ -31,7 +40,9 @@ class PixaiOnnxTagger(BaseTagger):
             ) from exc
 
         source = resolve_model_source()
-        bundle = ensure_onnx_bundle(build_pixai_bundle_spec(self.config, source), source)
+        bundle = ensure_onnx_bundle(
+            build_pixai_bundle_spec(self.config, source), source
+        )
         self.tags = self._load_tags(bundle.require("selected_tags.csv"))
         self.preprocess_steps = self._load_preprocess(bundle.require("preprocess.json"))
         self.bundle_thresholds = self._load_thresholds(bundle.get("thresholds.csv"))
@@ -59,7 +70,9 @@ class PixaiOnnxTagger(BaseTagger):
         scores = self._probabilities(scores)
         count = min(len(self.tags), scores.shape[0])
         return [
-            TagPrediction(tag=self.tags[index]["name"], score=float(scores[index]), source=self.id)
+            TagPrediction(
+                tag=self.tags[index]["name"], score=float(scores[index]), source=self.id
+            )
             for index in range(count)
         ]
 
@@ -90,7 +103,12 @@ class PixaiOnnxTagger(BaseTagger):
         if isinstance(data, list):
             steps = data
         elif isinstance(data, dict):
-            steps = data.get("stages") or data.get("pipeline") or data.get("preprocess") or data.get("steps")
+            steps = (
+                data.get("stages")
+                or data.get("pipeline")
+                or data.get("preprocess")
+                or data.get("steps")
+            )
         else:
             steps = None
         if not isinstance(steps, list) or not steps:
@@ -113,7 +131,11 @@ class PixaiOnnxTagger(BaseTagger):
     def _normalize_step(self, step: Any, path: Path) -> dict[str, Any]:
         if not isinstance(step, dict):
             raise ModelLoadError(f"PixAI preprocess.json 中存在非法 stage: {path}")
-        name = str(step.get("type") or step.get("name") or step.get("op") or "").strip().lower()
+        name = (
+            str(step.get("type") or step.get("name") or step.get("op") or "")
+            .strip()
+            .lower()
+        )
         if name not in {"resize", "to_tensor", "normalize"}:
             raise ModelLoadError(f"PixAI 暂不支持的预处理 stage: {name or '<empty>'}")
         return dict(step, type=name)
@@ -148,21 +170,32 @@ class PixaiOnnxTagger(BaseTagger):
             value = np.expand_dims(value, axis=0)
         return value.astype("float32", copy=False)
 
-    def _apply_resize(self, value: Image.Image | np.ndarray, step: dict[str, Any]) -> Image.Image:
-        image = value if isinstance(value, Image.Image) else Image.fromarray(self._to_hwc_uint8(value))
+    def _apply_resize(
+        self, value: Image.Image | np.ndarray, step: dict[str, Any]
+    ) -> Image.Image:
+        image = (
+            value
+            if isinstance(value, Image.Image)
+            else Image.fromarray(self._to_hwc_uint8(value))
+        )
         size = step.get("size")
         if isinstance(size, int):
             target = (size, size)
         elif isinstance(size, list) and len(size) == 2:
             target = (int(size[0]), int(size[1]))
         elif isinstance(size, dict):
-            target = (int(size.get("width", size.get("size", 448))), int(size.get("height", size.get("size", 448))))
+            target = (
+                int(size.get("width", size.get("size", 448))),
+                int(size.get("height", size.get("size", 448))),
+            )
         else:
             target = (
                 int(step.get("width", step.get("resize", 448))),
                 int(step.get("height", step.get("resize", 448))),
             )
-        resample_name = str(step.get("resample") or step.get("interpolation") or "bicubic").upper()
+        resample_name = str(
+            step.get("resample") or step.get("interpolation") or "bicubic"
+        ).upper()
         resample = getattr(Image.Resampling, resample_name, Image.Resampling.BICUBIC)
         return image.resize(target, resample)
 
@@ -179,10 +212,16 @@ class PixaiOnnxTagger(BaseTagger):
                 return array
         return np.transpose(array, (2, 0, 1))
 
-    def _apply_normalize(self, value: Image.Image | np.ndarray, step: dict[str, Any]) -> np.ndarray:
+    def _apply_normalize(
+        self, value: Image.Image | np.ndarray, step: dict[str, Any]
+    ) -> np.ndarray:
         tensor = self._apply_to_tensor(value)
-        mean = np.asarray(step.get("mean", [0.0, 0.0, 0.0]), dtype="float32").reshape(-1, 1, 1)
-        std = np.asarray(step.get("std", [1.0, 1.0, 1.0]), dtype="float32").reshape(-1, 1, 1)
+        mean = np.asarray(step.get("mean", [0.0, 0.0, 0.0]), dtype="float32").reshape(
+            -1, 1, 1
+        )
+        std = np.asarray(step.get("std", [1.0, 1.0, 1.0]), dtype="float32").reshape(
+            -1, 1, 1
+        )
         return (tensor - mean) / std
 
     def _pick_output(self, outputs: list[Any], expected_dim: int) -> np.ndarray:
@@ -194,7 +233,9 @@ class PixaiOnnxTagger(BaseTagger):
                 return candidate.astype("float32")
         if not candidates:
             raise ModelInferenceError("PixAI 未返回任何输出")
-        best = max(candidates, key=lambda item: item.shape[-1] if item.ndim else item.size)
+        best = max(
+            candidates, key=lambda item: item.shape[-1] if item.ndim else item.size
+        )
         if best.ndim >= 2:
             best = best[0]
         return np.asarray(best).reshape(-1).astype("float32")

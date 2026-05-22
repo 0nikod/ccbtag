@@ -23,7 +23,7 @@ class TestOpenAIHttpCaptioner(unittest.TestCase):
                 "endpoint_env": "TEST_OPENAI_BASE_URL",
                 "model_env": "TEST_OPENAI_MODEL",
                 "api_key_env": "TEST_OPENAI_API_KEY",
-            }
+            },
         )
 
     @patch("os.getenv")
@@ -40,9 +40,7 @@ class TestOpenAIHttpCaptioner(unittest.TestCase):
 
         self.assertTrue(captioner.loaded)
         mock_openai.assert_called_once_with(
-            base_url="http://127.0.0.1:8000/v1",
-            api_key="sk-123",
-            timeout=120.0
+            base_url="http://127.0.0.1:8000/v1", api_key="sk-123", timeout=120.0
         )
         self.assertEqual(captioner.model, "test-model")
 
@@ -59,7 +57,9 @@ class TestOpenAIHttpCaptioner(unittest.TestCase):
 
     @patch("os.getenv")
     @patch("openai.OpenAI")
-    def test_predict_success(self, mock_openai: MagicMock, mock_getenv: MagicMock) -> None:
+    def test_predict_success(
+        self, mock_openai: MagicMock, mock_getenv: MagicMock
+    ) -> None:
         mock_getenv.side_effect = lambda key, default="": {
             "TEST_OPENAI_BASE_URL": "http://127.0.0.1:8000/v1",
             "TEST_OPENAI_MODEL": "test-model",
@@ -77,8 +77,10 @@ class TestOpenAIHttpCaptioner(unittest.TestCase):
         mock_client.chat.completions.create.return_value = mock_response
 
         # Mock file operations for data URL creation
-        with patch.object(Path, "read_bytes", return_value=b"fake-image-data"), \
-             patch.object(Path, "exists", return_value=True):
+        with (
+            patch.object(Path, "read_bytes", return_value=b"fake-image-data"),
+            patch.object(Path, "exists", return_value=True),
+        ):
             result = captioner.predict(Path("test.png"), tags=["1girl", "standing"])
 
         self.assertEqual(result, "A girl standing.")
@@ -91,7 +93,9 @@ class TestOpenAIHttpCaptioner(unittest.TestCase):
 
     @patch("os.getenv")
     @patch("openai.OpenAI")
-    def test_predict_openai_error(self, mock_openai: MagicMock, mock_getenv: MagicMock) -> None:
+    def test_predict_openai_error(
+        self, mock_openai: MagicMock, mock_getenv: MagicMock
+    ) -> None:
         mock_getenv.side_effect = lambda key, default="": {
             "TEST_OPENAI_BASE_URL": "http://127.0.0.1:8000/v1",
         }.get(key, default)
@@ -100,10 +104,14 @@ class TestOpenAIHttpCaptioner(unittest.TestCase):
         captioner.load()
 
         mock_client = mock_openai.return_value
-        mock_client.chat.completions.create.side_effect = openai.OpenAIError("API Rate Limit")
+        mock_client.chat.completions.create.side_effect = openai.OpenAIError(
+            "API Rate Limit"
+        )
 
-        with patch.object(Path, "read_bytes", return_value=b"fake"), \
-             patch.object(Path, "exists", return_value=True):
+        with (
+            patch.object(Path, "read_bytes", return_value=b"fake"),
+            patch.object(Path, "exists", return_value=True),
+        ):
             with self.assertRaises(ModelInferenceError) as context:
                 captioner.predict(Path("test.png"))
 
