@@ -3,12 +3,15 @@ from __future__ import annotations
 from dataclasses import replace
 import json
 from pathlib import Path
+import sqlite3
 
 from app.core.dataset import deserialize_records, scan_dataset, serialize_records
+from app.services.tag_category_service import TagCategoryService
 from app.ui import events
 from tests.helpers import (
     FakeRegistry,
     FakeTagModel,
+    PredictionStub,
     build_services,
     make_config,
     write_image,
@@ -20,6 +23,25 @@ class _Event:
         self.index = index
 
 
+def write_tag_db(path: Path) -> Path:
+    connection = sqlite3.connect(path)
+    try:
+        connection.execute(
+            "CREATE TABLE tags (id INTEGER, name TEXT, alias TEXT, post_count INTEGER, category INTEGER, is_deprecated INTEGER)"
+        )
+        connection.executemany(
+            "INSERT INTO tags (id, name, alias, post_count, category, is_deprecated) VALUES (?, ?, ?, ?, ?, ?)",
+            [
+                (1, "solo", "", 1, 0, 0),
+                (2, "kantoku", "", 1, 1, 0),
+            ],
+        )
+        connection.commit()
+    finally:
+        connection.close()
+    return path
+
+
 def test_open_folder_failure_matches_open_outputs() -> None:
     payload = events.open_folder("/path/that/does/not/exist", "caption_json")
 
@@ -29,7 +51,12 @@ def test_open_folder_failure_matches_open_outputs() -> None:
 
 def test_empty_batch_actions_match_open_outputs() -> None:
     assert (
-        len(events.batch_generate_tags([], 0, "", "", "PixAI Tagger v0.9", True)) == 8
+        len(
+            events.batch_generate_tags(
+                [], 0, "", "", "PixAI Tagger v0.9", ["general"], True
+            )
+        )
+        == 8
     )
     assert len(events.batch_delete_tag([], 0, "", "", "solo")) == 8
 
@@ -72,7 +99,10 @@ def test_generate_save_batch_and_tag_edit_return_dataset_payload(
     try:
         events.set_services_for_test(build_services(registry=FakeRegistry()))
 
-        assert len(events.generate_tag(records, 0, "PixAI Tagger v0.9", "", "")) == 8
+        assert (
+            len(events.generate_tag(records, 0, "PixAI Tagger v0.9", ["general"], "", ""))
+            == 8
+        )
         assert (
             len(
                 events.generate_nl(
@@ -92,7 +122,13 @@ def test_generate_save_batch_and_tag_edit_return_dataset_payload(
         assert (
             len(
                 events.batch_generate_tags(
-                    records, 0, "", "", "PixAI Tagger v0.9", True
+                    records,
+                    0,
+                    "",
+                    "",
+                    "PixAI Tagger v0.9",
+                    ["general"],
+                    True,
                 )
             )
             == 8
@@ -144,6 +180,7 @@ def test_batch_generate_tags_skips_current_unsaved_manual_edit(tmp_path: Path) -
             "manual tag",
             "",
             "PixAI Tagger v0.9",
+            ["general"],
             True,
         )
 
@@ -242,3 +279,37 @@ def test_open_folder_restores_draft_overlay(tmp_path: Path) -> None:
 
     assert payload[3] == "draft tag"
     assert payload[4] == "draft nl"
+
+
+def test_generate_tag_keeps_only_selected_categories(tmp_path: Path) -> None:
+    write_image(tmp_path / "0001.png")
+    records = serialize_records(scan_dataset(tmp_path))
+    previous = events.SERVICES
+    try:
+        events.set_services_for_test(
+            build_services(
+                registry=FakeRegistry(
+                    tag_model=FakeTagModel(
+                        [
+                            PredictionStub("solo", 0.9),
+                            PredictionStub("kantoku", 0.8),
+                        ]
+                    )
+                ),
+                tag_categories=TagCategoryService(write_tag_db(tmp_path / "tags.sqlite")),
+            )
+        )
+
+        payload = events.generate_tag(
+            records,
+            0,
+            "PixAI Tagger v0.9",
+            ["general"],
+            "",
+            "",
+        )
+
+        updated = deserialize_records(payload[0])
+        assert updated[0].tags == ["solo"]
+    finally:
+        events.set_services_for_test(previous)

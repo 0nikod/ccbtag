@@ -122,6 +122,11 @@ def build_app() -> gr.Blocks:
                                     if events.tag_model_choices()
                                     else None,
                                 )
+                                workbench_tag_categories = gr.CheckboxGroup(
+                                    label="Tag 生成保留类别",
+                                    choices=events.tag_category_choices(),
+                                    value=events.default_kept_tag_categories(),
+                                )
                                 nl_model = gr.Dropdown(
                                     label="描述模型",
                                     choices=events.nl_model_choices(),
@@ -183,6 +188,11 @@ def build_app() -> gr.Blocks:
                     with gr.Row():
                         with gr.Column(variant="panel"):
                             gr.Markdown("### 自动批量生成")
+                            batch_tag_categories = gr.CheckboxGroup(
+                                label="Tag 生成保留类别",
+                                choices=events.tag_category_choices(),
+                                value=events.default_kept_tag_categories(),
+                            )
                             skip_edited = gr.Checkbox(
                                 label="跳过已人工编辑图片", value=True
                             )
@@ -288,7 +298,14 @@ def build_app() -> gr.Blocks:
 
         generate_tag_button.click(
             events.generate_tag,
-            inputs=[records_state, current_index, tag_model, tags_text, nl_text],
+            inputs=[
+                records_state,
+                current_index,
+                tag_model,
+                workbench_tag_categories,
+                tags_text,
+                nl_text,
+            ],
             outputs=open_outputs,
         )
         generate_nl_button.click(
@@ -313,6 +330,7 @@ def build_app() -> gr.Blocks:
                 records_state,
                 current_index,
                 tag_model,
+                workbench_tag_categories,
                 nl_model,
                 nl_endpoint,
                 nl_model_name,
@@ -355,6 +373,7 @@ def build_app() -> gr.Blocks:
                 tags_text,
                 nl_text,
                 tag_model,
+                batch_tag_categories,
                 skip_edited,
             ],
             outputs=open_outputs,
@@ -384,6 +403,7 @@ def build_app() -> gr.Blocks:
                 tags_text,
                 nl_text,
                 tag_model,
+                batch_tag_categories,
                 nl_model,
                 nl_endpoint,
                 nl_model_name,

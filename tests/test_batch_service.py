@@ -1,10 +1,13 @@
 from dataclasses import replace
+from pathlib import Path
+import sqlite3
 
 import pytest
 
 from app.core.dataset import ImageRecord, update_record_text
 from app.services.batch_service import BatchGenerateOptions, BatchService
 from app.services.generation_service import GenerationService, NlRequest
+from app.services.tag_category_service import TagCategoryService
 from tests.helpers import (
     FakeNlModel,
     FakeRegistry,
@@ -21,10 +24,34 @@ def make_records() -> list[ImageRecord]:
     ]
 
 
-def make_service(registry: FakeRegistry, *, shuffle_tags: bool = True) -> BatchService:
+def write_tag_db(path: Path) -> TagCategoryService:
+    connection = sqlite3.connect(path)
+    try:
+        connection.execute(
+            "CREATE TABLE tags (id INTEGER, name TEXT, alias TEXT, post_count INTEGER, category INTEGER, is_deprecated INTEGER)"
+        )
+        connection.executemany(
+            "INSERT INTO tags (id, name, alias, post_count, category, is_deprecated) VALUES (?, ?, ?, ?, ?, ?)",
+            [
+                (1, "solo", "", 1, 0, 0),
+                (2, "kantoku", "", 1, 1, 0),
+            ],
+        )
+        connection.commit()
+    finally:
+        connection.close()
+    return TagCategoryService(path)
+
+
+def make_service(
+    registry: FakeRegistry,
+    *,
+    shuffle_tags: bool = True,
+    tag_categories: TagCategoryService | None = None,
+) -> BatchService:
     base_config = make_config()
     config = make_config(nl=replace(base_config.nl, shuffle_tags=shuffle_tags))
-    return BatchService(GenerationService(config, registry))
+    return BatchService(GenerationService(config, registry, tag_categories=tag_categories))
 
 
 def test_empty_records_are_safe() -> None:
@@ -97,6 +124,28 @@ def test_tag_only_nl_only_and_both_modes_work() -> None:
     assert nl_records[0].nl == "generated nl"
     assert both_records[0].tags == ["solo"]
     assert both_records[0].nl == "generated nl"
+
+
+def test_tag_batch_keeps_only_selected_categories(tmp_path: Path) -> None:
+    records = make_records()
+    registry = FakeRegistry(
+        tag_model=FakeTagModel(
+            [PredictionStub("solo", 0.9), PredictionStub("kantoku", 0.8)]
+        )
+    )
+
+    make_service(
+        registry,
+        tag_categories=write_tag_db(tmp_path / "tags.sqlite"),
+    ).generate(
+        records,
+        BatchGenerateOptions(
+            tag_model_display="PixAI Tagger v0.9",
+            kept_tag_categories=("general",),
+        ),
+    )
+
+    assert records[0].tags == ["solo"]
 
 
 def test_single_item_failures_do_not_stop_batch_and_errors_are_counted() -> None:

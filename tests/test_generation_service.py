@@ -1,7 +1,10 @@
 from dataclasses import replace
+from pathlib import Path
+import sqlite3
 
 from app.core.dataset import ImageRecord
 from app.services.generation_service import GenerationService, NlRequest
+from app.services.tag_category_service import TagCategoryService
 from tests.helpers import (
     FakeNlModel,
     FakeRegistry,
@@ -18,6 +21,26 @@ def make_record() -> ImageRecord:
         metadata_path="sample.caption.json",
         file_name="sample.png",
     )
+
+
+def write_tag_db(path: Path) -> TagCategoryService:
+    connection = sqlite3.connect(path)
+    try:
+        connection.execute(
+            "CREATE TABLE tags (id INTEGER, name TEXT, alias TEXT, post_count INTEGER, category INTEGER, is_deprecated INTEGER)"
+        )
+        connection.executemany(
+            "INSERT INTO tags (id, name, alias, post_count, category, is_deprecated) VALUES (?, ?, ?, ?, ?, ?)",
+            [
+                (1, "solo", "", 1, 0, 0),
+                (2, "kantoku", "", 1, 1, 0),
+                (3, "hakurei_reimu", "", 1, 4, 0),
+            ],
+        )
+        connection.commit()
+    finally:
+        connection.close()
+    return TagCategoryService(path)
 
 
 def test_generate_tags_success_updates_record_and_clears_error() -> None:
@@ -47,6 +70,28 @@ def test_generate_tags_failure_sets_tag_error() -> None:
     assert result.ok is False
     assert record.tag_status == "error"
     assert record.error == "boom"
+
+
+def test_generate_tags_keeps_only_selected_categories(tmp_path: Path) -> None:
+    service = GenerationService(
+        make_config(),
+        FakeRegistry(
+            tag_model=FakeTagModel(
+                [
+                    PredictionStub("solo", 0.9),
+                    PredictionStub("kantoku", 0.8),
+                    PredictionStub("hakurei_reimu", 0.7),
+                ]
+            )
+        ),
+        tag_categories=write_tag_db(tmp_path / "tags.sqlite"),
+    )
+    record = make_record()
+
+    result = service.generate_tags(record, "PixAI Tagger v0.9", ("general",))
+
+    assert result.ok is True
+    assert record.tags == ["solo"]
 
 
 def test_generate_nl_success_updates_record_and_clears_error() -> None:
@@ -167,3 +212,33 @@ def test_generate_both_keeps_generated_tags_when_nl_fails() -> None:
     assert record.tags == ["solo"]
     assert record.tag_status == "generated"
     assert record.nl_status == "error"
+
+
+def test_generate_both_sends_filtered_tags_to_nl(tmp_path: Path) -> None:
+    registry = FakeRegistry(
+        tag_model=FakeTagModel(
+            [
+                PredictionStub("solo", 0.9),
+                PredictionStub("kantoku", 0.8),
+            ]
+        ),
+        nl_model=FakeNlModel(response="generated nl"),
+    )
+    service = GenerationService(
+        make_config(),
+        registry,
+        tag_categories=write_tag_db(tmp_path / "tags.sqlite"),
+    )
+    record = make_record()
+
+    result = service.generate_both(
+        record,
+        "PixAI Tagger v0.9",
+        "OpenAI Completions",
+        NlRequest("http://127.0.0.1:8000/v1", "model"),
+        ("general",),
+    )
+
+    assert result.ok is True
+    assert record.tags == ["solo"]
+    assert registry.nl_model.calls[-1]["tags"] == ["solo"]

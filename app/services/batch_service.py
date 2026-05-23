@@ -13,6 +13,7 @@ class BatchGenerateOptions:
     nl_model_display: str | None = None
     skip_edited: bool = True
     nl_request: NlRequest | None = None
+    kept_tag_categories: tuple[str, ...] | None = None
 
 
 @dataclass(frozen=True)
@@ -49,7 +50,9 @@ class BatchService:
 
             if options.tag_model_display and options.nl_model_display:
                 result = self.generation.generate_tags(
-                    record, options.tag_model_display
+                    record,
+                    options.tag_model_display,
+                    options.kept_tag_categories,
                 )
                 if not result.ok:
                     errors += 1
@@ -65,7 +68,9 @@ class BatchService:
 
             if options.tag_model_display:
                 result = self.generation.generate_tags(
-                    record, options.tag_model_display
+                    record,
+                    options.tag_model_display,
+                    options.kept_tag_categories,
                 )
                 if not result.ok:
                     errors += 1

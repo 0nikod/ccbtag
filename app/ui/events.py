@@ -15,6 +15,11 @@ from app.services import (
     NlRequest,
     create_app_services,
 )
+from app.services.tag_category_service import (
+    DEFAULT_KEPT_TAG_CATEGORIES,
+    normalize_kept_tag_categories,
+    tag_category_choices as available_tag_category_choices,
+)
 from app.ui import presenter
 
 
@@ -97,6 +102,14 @@ def default_nl_image_resize_mode() -> str:
 
 def default_shuffle_tags() -> bool:
     return SERVICES.config.nl.shuffle_tags
+
+
+def tag_category_choices() -> list[str]:
+    return available_tag_category_choices()
+
+
+def default_kept_tag_categories() -> list[str]:
+    return list(DEFAULT_KEPT_TAG_CATEGORIES)
 
 
 def open_folder(folder: str, metadata_location_label: str) -> presenter.DatasetPayload:
@@ -221,6 +234,7 @@ def generate_tag(
     records_data: list[dict[str, Any]],
     current_index: int | None,
     tag_model_display: str,
+    kept_categories: list[str] | None,
     tags_text: str,
     nl_text: str,
 ) -> presenter.DatasetPayload:
@@ -230,7 +244,11 @@ def generate_tag(
     index = SERVICES.dataset.sync_current_form(
         records, current_index, tags_text, nl_text
     )
-    result = SERVICES.generation.generate_tags(records[index], tag_model_display)
+    result = SERVICES.generation.generate_tags(
+        records[index],
+        tag_model_display,
+        normalize_kept_tag_categories(kept_categories),
+    )
     return presenter.dataset_payload(
         records, index, result.message, SERVICES.config.caption
     )
@@ -265,6 +283,7 @@ def generate_tag_and_nl(
     records_data: list[dict[str, Any]],
     current_index: int | None,
     tag_model_display: str,
+    kept_categories: list[str] | None,
     nl_model_display: str,
     nl_endpoint: str,
     nl_model_name: str,
@@ -282,7 +301,11 @@ def generate_tag_and_nl(
     )
     request = NlRequest(nl_endpoint, nl_model_name, nl_api_key, shuffle_tags, image_resize_mode)
     result = SERVICES.generation.generate_both(
-        records[index], tag_model_display, nl_model_display, request
+        records[index],
+        tag_model_display,
+        nl_model_display,
+        request,
+        normalize_kept_tag_categories(kept_categories),
     )
     return presenter.dataset_payload(
         records, index, result.message, SERVICES.config.caption
@@ -339,6 +362,7 @@ def batch_generate_tags(
     tags_text: str,
     nl_text: str,
     tag_model_display: str,
+    kept_categories: list[str] | None,
     skip_edited: bool,
     progress: gr.Progress | None = None,
 ) -> presenter.DatasetPayload:
@@ -352,6 +376,7 @@ def batch_generate_tags(
         records,
         BatchGenerateOptions(
             tag_model_display=tag_model_display,
+            kept_tag_categories=normalize_kept_tag_categories(kept_categories),
             skip_edited=skip_edited,
         ),
         progress,
@@ -407,6 +432,7 @@ def batch_generate_both(
     tags_text: str,
     nl_text: str,
     tag_model_display: str,
+    kept_categories: list[str] | None,
     nl_model_display: str,
     nl_endpoint: str,
     nl_model_name: str,
@@ -426,6 +452,7 @@ def batch_generate_both(
         records,
         BatchGenerateOptions(
             tag_model_display=tag_model_display,
+            kept_tag_categories=normalize_kept_tag_categories(kept_categories),
             nl_model_display=nl_model_display,
             skip_edited=skip_edited,
             nl_request=NlRequest(

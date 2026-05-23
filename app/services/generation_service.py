@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Iterable
 
 from app.core.dataset import (
     ImageRecord,
@@ -12,6 +13,7 @@ from app.core.dataset import (
 from app.core.settings import AppConfig
 from app.core.tag_utils import TagRuleConfig, prediction_dicts_to_tags
 from app.models.registry import ModelRegistry
+from app.services.tag_category_service import TagCategoryService
 
 
 @dataclass(frozen=True)
@@ -35,15 +37,18 @@ class GenerationService:
         config: AppConfig,
         registry: ModelRegistry,
         tag_rules: TagRuleConfig | None = None,
+        tag_categories: TagCategoryService | None = None,
     ) -> None:
         self.config = config
         self.registry = registry
         self.tag_rules = tag_rules or config.tag
+        self.tag_categories = tag_categories or TagCategoryService()
 
     def generate_tags(
         self,
         record: ImageRecord,
         tag_model_display: str,
+        kept_categories: Iterable[str] | None = None,
     ) -> GenerateResult:
         try:
             model = self.registry.get_by_display("tag", tag_model_display)
@@ -53,6 +58,9 @@ class GenerationService:
                     record.image_path, threshold=self.tag_rules.threshold
                 )
             ]
+            predictions = self.tag_categories.filter_predictions(
+                predictions, kept_categories
+            )
             tags = prediction_dicts_to_tags(predictions, self.tag_rules)
             set_generated_tags(record, tags, predictions)
             save_record_draft(
@@ -107,8 +115,9 @@ class GenerationService:
         tag_model_display: str,
         nl_model_display: str,
         request: NlRequest,
+        kept_categories: Iterable[str] | None = None,
     ) -> GenerateResult:
-        tag_result = self.generate_tags(record, tag_model_display)
+        tag_result = self.generate_tags(record, tag_model_display, kept_categories)
         if not tag_result.ok:
             return tag_result
         return self.generate_nl(record, nl_model_display, request)

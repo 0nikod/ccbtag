@@ -9,6 +9,7 @@ from app.services.batch_service import BatchService
 from app.services.dataset_service import DatasetService
 from app.services.generation_service import GenerationService
 from app.services.save_service import SaveService
+from app.services.tag_category_service import TagCategoryService
 from app.services.tag_edit_service import TagEditService
 
 
@@ -30,7 +31,12 @@ def create_app_services(
     config = load_app_config(config_root)
     active_registry = registry or default_registry()
     dataset = DatasetService(config.caption.joiner)
-    generation = GenerationService(config, active_registry, config.tag)
+    generation = GenerationService(
+        config,
+        active_registry,
+        config.tag,
+        TagCategoryService(),
+    )
     return AppServices(
         config=config,
         registry=active_registry,

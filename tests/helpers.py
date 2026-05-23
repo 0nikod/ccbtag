@@ -11,6 +11,7 @@ from app.services.context import AppServices
 from app.services.dataset_service import DatasetService
 from app.services.generation_service import GenerationService
 from app.services.save_service import SaveService
+from app.services.tag_category_service import TagCategoryService
 from app.services.tag_edit_service import TagEditService
 
 
@@ -117,11 +118,17 @@ def make_config(**overrides: object) -> AppConfig:
 def build_services(
     config: AppConfig | None = None,
     registry: FakeRegistry | None = None,
+    tag_categories: TagCategoryService | None = None,
 ) -> AppServices:
     active_config = config or load_app_config()
     active_registry = registry or FakeRegistry()
     dataset = DatasetService(active_config.caption.joiner)
-    generation = GenerationService(active_config, active_registry, active_config.tag)
+    generation = GenerationService(
+        active_config,
+        active_registry,
+        active_config.tag,
+        tag_categories,
+    )
     return AppServices(
         config=active_config,
         registry=active_registry,
