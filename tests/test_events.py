@@ -182,6 +182,19 @@ def test_default_shuffle_tags_uses_config_nl() -> None:
         events.set_services_for_test(previous)
 
 
+def test_default_nl_image_resize_mode_uses_config_ui() -> None:
+    previous = events.SERVICES
+    try:
+        config = make_config(
+            ui=replace(previous.config.ui, nl_image_resize_mode="1MP")
+        )
+        events.set_services_for_test(build_services(config=config))
+
+        assert events.default_nl_image_resize_mode() == "1MP"
+    finally:
+        events.set_services_for_test(previous)
+
+
 def test_autosave_current_updates_state_and_draft(tmp_path: Path) -> None:
     write_image(tmp_path / "0001.png")
     records = serialize_records(scan_dataset(tmp_path))

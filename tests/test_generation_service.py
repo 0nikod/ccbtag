@@ -117,6 +117,20 @@ def test_shuffle_tags_request_can_override_config_default() -> None:
     assert registry.nl_model.calls[-1]["shuffle_tags"] is False
 
 
+def test_image_resize_mode_is_passed_to_nl_model() -> None:
+    registry = FakeRegistry(nl_model=FakeNlModel())
+    config = make_config()
+    record = make_record()
+
+    GenerationService(config, registry).generate_nl(
+        record,
+        "OpenAI Completions",
+        NlRequest("http://127.0.0.1:8000/v1", "model", image_resize_mode="1MP"),
+    )
+
+    assert registry.nl_model.calls[-1]["image_resize_mode"] == "1MP"
+
+
 def test_generate_both_stops_when_tag_generation_fails() -> None:
     registry = FakeRegistry(
         tag_model=FakeTagModel(error=RuntimeError("tag boom")),

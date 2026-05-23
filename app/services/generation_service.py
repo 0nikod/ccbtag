@@ -20,6 +20,7 @@ class NlRequest:
     model_name: str
     api_key: str = ""
     shuffle_tags: bool | None = None
+    image_resize_mode: str = "None"
 
 
 @dataclass(frozen=True)
@@ -87,6 +88,7 @@ class GenerationService:
                 language=self.config.nl.language,
                 use_tags_as_context=self.config.nl.use_tags_as_context,
                 shuffle_tags=shuffle_tags,
+                image_resize_mode=request.image_resize_mode,
             )
             set_generated_nl(record, generated)
             save_record_draft(

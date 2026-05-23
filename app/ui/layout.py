@@ -147,6 +147,11 @@ def build_app() -> gr.Blocks:
                                         label="生成前打乱 Tag 顺序",
                                         value=events.default_shuffle_tags(),
                                     )
+                                    image_resize_mode = gr.Dropdown(
+                                        label="图片压缩",
+                                        choices=["None", "1MP"],
+                                        value=events.default_nl_image_resize_mode(),
+                                    )
 
                             with gr.Group():
                                 tags_text = gr.Textbox(label="Tag", lines=5)
@@ -298,6 +303,7 @@ def build_app() -> gr.Blocks:
                 tags_text,
                 nl_text,
                 shuffle_tags,
+                image_resize_mode,
             ],
             outputs=open_outputs,
         )
@@ -314,6 +320,7 @@ def build_app() -> gr.Blocks:
                 tags_text,
                 nl_text,
                 shuffle_tags,
+                image_resize_mode,
             ],
             outputs=open_outputs,
         )
@@ -365,6 +372,7 @@ def build_app() -> gr.Blocks:
                 nl_api_key,
                 skip_edited,
                 shuffle_tags,
+                image_resize_mode,
             ],
             outputs=open_outputs,
         )
@@ -382,6 +390,7 @@ def build_app() -> gr.Blocks:
                 nl_api_key,
                 skip_edited,
                 shuffle_tags,
+                image_resize_mode,
             ],
             outputs=open_outputs,
         )

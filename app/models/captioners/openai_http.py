@@ -72,6 +72,7 @@ class OpenAIHttpCaptioner(BaseCaptioner):
             client_used = self.client
 
         try:
+            image_resize_mode = str(kwargs.get("image_resize_mode", "None"))
             response = client_used.chat.completions.create(
                 model=model,
                 messages=[
@@ -82,7 +83,7 @@ class OpenAIHttpCaptioner(BaseCaptioner):
                             {"type": "text", "text": user_prompt},
                             {
                                 "type": "image_url",
-                                "image_url": {"url": self._data_url(path)},
+                                "image_url": {"url": self._data_url(path, image_resize_mode)},
                             },
                         ],
                     },
@@ -130,7 +131,36 @@ class OpenAIHttpCaptioner(BaseCaptioner):
             shuffle_tags=bool(kwargs.get("shuffle_tags", True)),
         )
 
-    def _data_url(self, path: Path) -> str:
+    def _data_url(self, path: Path, image_resize_mode: str = "None") -> str:
         mime_type = mimetypes.guess_type(path.name)[0] or "image/png"
-        encoded = base64.b64encode(path.read_bytes()).decode("ascii")
+        
+        if image_resize_mode == "1MP":
+            import math
+            from io import BytesIO
+            from PIL import Image
+            
+            with Image.open(path) as img:
+                width, height = img.size
+                current_area = width * height
+                target_area = 1048576
+                
+                if current_area > target_area:
+                    scale_factor = math.sqrt(target_area / current_area)
+                    new_width = int(width * scale_factor)
+                    new_height = int(height * scale_factor)
+                    
+                    if img.mode != "RGB" and mime_type == "image/jpeg":
+                        img = img.convert("RGB")
+                    
+                    img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+                    
+                    buffer = BytesIO()
+                    fmt = "PNG" if "png" in mime_type.lower() else "JPEG"
+                    img.save(buffer, format=fmt)
+                    encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
+                else:
+                    encoded = base64.b64encode(path.read_bytes()).decode("ascii")
+        else:
+            encoded = base64.b64encode(path.read_bytes()).decode("ascii")
+            
         return f"data:{mime_type};base64,{encoded}"

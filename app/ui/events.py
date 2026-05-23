@@ -91,6 +91,10 @@ def default_nl_api_key() -> str:
     return SERVICES.config.ui.nl_api_key
 
 
+def default_nl_image_resize_mode() -> str:
+    return getattr(SERVICES.config.ui, "nl_image_resize_mode", "None")
+
+
 def default_shuffle_tags() -> bool:
     return SERVICES.config.nl.shuffle_tags
 
@@ -242,6 +246,7 @@ def generate_nl(
     tags_text: str,
     nl_text: str,
     shuffle_tags: bool | None = None,
+    image_resize_mode: str = "None",
 ) -> presenter.DatasetPayload:
     records = deserialize_records(records_data)
     if not records:
@@ -249,7 +254,7 @@ def generate_nl(
     index = SERVICES.dataset.sync_current_form(
         records, current_index, tags_text, nl_text
     )
-    request = NlRequest(nl_endpoint, nl_model_name, nl_api_key, shuffle_tags)
+    request = NlRequest(nl_endpoint, nl_model_name, nl_api_key, shuffle_tags, image_resize_mode)
     result = SERVICES.generation.generate_nl(records[index], nl_model_display, request)
     return presenter.dataset_payload(
         records, index, result.message, SERVICES.config.caption
@@ -267,6 +272,7 @@ def generate_tag_and_nl(
     tags_text: str,
     nl_text: str,
     shuffle_tags: bool | None = None,
+    image_resize_mode: str = "None",
 ) -> presenter.DatasetPayload:
     records = deserialize_records(records_data)
     if not records:
@@ -274,7 +280,7 @@ def generate_tag_and_nl(
     index = SERVICES.dataset.sync_current_form(
         records, current_index, tags_text, nl_text
     )
-    request = NlRequest(nl_endpoint, nl_model_name, nl_api_key, shuffle_tags)
+    request = NlRequest(nl_endpoint, nl_model_name, nl_api_key, shuffle_tags, image_resize_mode)
     result = SERVICES.generation.generate_both(
         records[index], tag_model_display, nl_model_display, request
     )
@@ -366,6 +372,7 @@ def batch_generate_nl(
     nl_api_key: str,
     skip_edited: bool,
     shuffle_tags: bool | None = None,
+    image_resize_mode: str = "None",
     progress: gr.Progress | None = None,
 ) -> presenter.DatasetPayload:
     records = deserialize_records(records_data)
@@ -384,6 +391,7 @@ def batch_generate_nl(
                 nl_model_name,
                 nl_api_key,
                 shuffle_tags,
+                image_resize_mode,
             ),
         ),
         progress,
@@ -405,6 +413,7 @@ def batch_generate_both(
     nl_api_key: str,
     skip_edited: bool,
     shuffle_tags: bool | None = None,
+    image_resize_mode: str = "None",
     progress: gr.Progress | None = None,
 ) -> presenter.DatasetPayload:
     records = deserialize_records(records_data)
@@ -424,6 +433,7 @@ def batch_generate_both(
                 nl_model_name,
                 nl_api_key,
                 shuffle_tags,
+                image_resize_mode,
             ),
         ),
         progress,

@@ -41,6 +41,7 @@ def valid_payload() -> dict[str, object]:
             "nl_endpoint": "http://127.0.0.1:8000/v1",
             "nl_model_name": "toriigate-0.5",
             "nl_api_key": "secret",
+            "nl_image_resize_mode": "1MP",
         },
     }
 
@@ -61,6 +62,7 @@ def test_load_app_config_reads_app_json(tmp_path: Path) -> None:
     assert config.ui.nl_endpoint == "http://127.0.0.1:8000/v1"
     assert config.ui.nl_model_name == "toriigate-0.5"
     assert config.ui.nl_api_key == "secret"
+    assert config.ui.nl_image_resize_mode == "1MP"
 
 
 @pytest.mark.parametrize(

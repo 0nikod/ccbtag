@@ -133,6 +133,70 @@ class TestOpenAIHttpCaptioner(unittest.TestCase):
 
         self.assertEqual(tags, ["1girl", "solo", "long_hair"])
 
+    def test_data_url_no_resize(self) -> None:
+        from PIL import Image
+        import base64
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            img_path = Path(tmp_dir) / "test.png"
+            img = Image.new("RGB", (100, 100))
+            img.save(img_path)
+
+            captioner = OpenAIHttpCaptioner(self.config)
+            data_url = captioner._data_url(img_path, image_resize_mode="None")
+
+            self.assertTrue(data_url.startswith("data:image/png;base64,"))
+            encoded = data_url.split(",", 1)[1]
+            decoded = base64.b64decode(encoded)
+            self.assertEqual(decoded, img_path.read_bytes())
+
+    def test_data_url_resize_1mp_smaller(self) -> None:
+        from PIL import Image
+        import base64
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            img_path = Path(tmp_dir) / "test.png"
+            img = Image.new("RGB", (500, 500))  # 250,000 pixels, smaller than 1MP
+            img.save(img_path)
+
+            captioner = OpenAIHttpCaptioner(self.config)
+            data_url = captioner._data_url(img_path, image_resize_mode="1MP")
+
+            self.assertTrue(data_url.startswith("data:image/png;base64,"))
+            encoded = data_url.split(",", 1)[1]
+            decoded = base64.b64decode(encoded)
+            self.assertEqual(decoded, img_path.read_bytes())
+
+    def test_data_url_resize_1mp_larger(self) -> None:
+        from PIL import Image
+        from io import BytesIO
+        import base64
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            img_path = Path(tmp_dir) / "test.png"
+            img = Image.new("RGB", (2000, 1000))  # 2,000,000 pixels, larger than 1MP
+            img.save(img_path)
+
+            captioner = OpenAIHttpCaptioner(self.config)
+            data_url = captioner._data_url(img_path, image_resize_mode="1MP")
+
+            self.assertTrue(data_url.startswith("data:image/png;base64,"))
+            encoded = data_url.split(",", 1)[1]
+            decoded = base64.b64decode(encoded)
+            
+            # Original bytes should NOT equal resized bytes
+            self.assertNotEqual(decoded, img_path.read_bytes())
+
+            # Verify resized dimensions
+            resized_img = Image.open(BytesIO(decoded))
+            width, height = resized_img.size
+            self.assertLessEqual(width * height, 1048576)
+            self.assertEqual(width, 1448)  # int(2000 * sqrt(1048576 / 2000000))
+            self.assertEqual(height, 724)  # int(1000 * sqrt(1048576 / 2000000))
+
 
 if __name__ == "__main__":
     unittest.main()
