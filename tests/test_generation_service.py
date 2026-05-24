@@ -1,3 +1,4 @@
+import logging
 from dataclasses import replace
 from pathlib import Path
 import sqlite3
@@ -43,7 +44,7 @@ def write_tag_db(path: Path) -> TagCategoryService:
     return TagCategoryService(path)
 
 
-def test_generate_tags_success_updates_record_and_clears_error() -> None:
+def test_generate_tags_success_updates_record_and_clears_error(caplog) -> None:
     service = GenerationService(
         make_config(),
         FakeRegistry(tag_model=FakeTagModel([PredictionStub("solo", 0.9)])),
@@ -51,11 +52,17 @@ def test_generate_tags_success_updates_record_and_clears_error() -> None:
     record = make_record()
     record.error = "old"
 
-    result = service.generate_tags(record, "PixAI Tagger v0.9")
+    with caplog.at_level(logging.INFO):
+        result = service.generate_tags(record, "PixAI Tagger v0.9")
 
     assert result.ok is True
     assert record.tags == ["solo"]
     assert record.error == ""
+    assert any("Generating tags:" in record.message for record in caplog.records)
+    assert any(
+        "Generated tags:" in record.message and "elapsed=" in record.message
+        for record in caplog.records
+    )
 
 
 def test_generate_tags_failure_sets_tag_error() -> None:
@@ -94,7 +101,7 @@ def test_generate_tags_keeps_only_selected_categories(tmp_path: Path) -> None:
     assert record.tags == ["solo"]
 
 
-def test_generate_nl_success_updates_record_and_clears_error() -> None:
+def test_generate_nl_success_updates_record_and_clears_error(caplog) -> None:
     service = GenerationService(
         make_config(),
         FakeRegistry(nl_model=FakeNlModel(response="A girl is standing.")),
@@ -103,33 +110,45 @@ def test_generate_nl_success_updates_record_and_clears_error() -> None:
     record.tags = ["solo"]
     record.error = "old"
 
-    result = service.generate_nl(
-        record,
-        "OpenAI Completions",
-        NlRequest("http://127.0.0.1:8000/v1", "model"),
-    )
+    with caplog.at_level(logging.INFO):
+        result = service.generate_nl(
+            record,
+            "OpenAI Completions",
+            NlRequest("http://127.0.0.1:8000/v1", "model"),
+        )
 
     assert result.ok is True
     assert record.nl == "A girl is standing."
     assert record.error == ""
+    assert any("Generating NL:" in record.message for record in caplog.records)
+    assert any(
+        "Generated NL:" in record.message and "elapsed=" in record.message
+        for record in caplog.records
+    )
 
 
-def test_generate_nl_failure_sets_nl_error() -> None:
+def test_generate_nl_failure_sets_nl_error(caplog) -> None:
     service = GenerationService(
         make_config(),
         FakeRegistry(nl_model=FakeNlModel(error=RuntimeError("nl boom"))),
     )
     record = make_record()
 
-    result = service.generate_nl(
-        record,
-        "OpenAI Completions",
-        NlRequest("http://127.0.0.1:8000/v1", "model"),
-    )
+    with caplog.at_level(logging.INFO):
+        result = service.generate_nl(
+            record,
+            "OpenAI Completions",
+            NlRequest("http://127.0.0.1:8000/v1", "model"),
+        )
 
     assert result.ok is False
     assert record.nl_status == "error"
     assert record.error == "nl boom"
+    assert any(
+        "Failed to generate NL:" in record.message and "elapsed=" in record.message
+        for record in caplog.records
+    )
+    assert any(record.exc_info is not None for record in caplog.records)
 
 
 def test_shuffle_tags_none_uses_config_default() -> None:

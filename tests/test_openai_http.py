@@ -186,7 +186,7 @@ class TestOpenAIHttpCaptioner(unittest.TestCase):
             self.assertTrue(data_url.startswith("data:image/png;base64,"))
             encoded = data_url.split(",", 1)[1]
             decoded = base64.b64decode(encoded)
-            
+
             # Original bytes should NOT equal resized bytes
             self.assertNotEqual(decoded, img_path.read_bytes())
 

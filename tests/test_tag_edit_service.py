@@ -1,3 +1,5 @@
+import logging
+
 from app.core.dataset import ImageRecord, update_record_text
 from app.services.tag_edit_service import TagEditService
 from tests.helpers import make_config
@@ -13,14 +15,17 @@ def make_records() -> list[ImageRecord]:
     return [first, second]
 
 
-def test_delete_replace_and_add_update_all_records() -> None:
+def test_delete_replace_and_add_update_all_records(caplog) -> None:
     service = TagEditService(make_config().tag)
 
-    delete_result = service.delete_tags(make_records(), "solo")
+    with caplog.at_level(logging.INFO):
+        delete_result = service.delete_tags(make_records(), "solo")
     replace_records = make_records()
-    replace_result = service.replace_tags(replace_records, "smile", "happy")
+    with caplog.at_level(logging.INFO):
+        replace_result = service.replace_tags(replace_records, "smile", "happy")
     add_records = make_records()
-    add_result = service.add_tags(add_records, "portrait", prepend=False)
+    with caplog.at_level(logging.INFO):
+        add_result = service.add_tags(add_records, "portrait", prepend=False)
     prepend_records = make_records()
     service.add_tags(prepend_records, "portrait", prepend=True)
 
@@ -30,6 +35,20 @@ def test_delete_replace_and_add_update_all_records() -> None:
     assert replace_records[0].tags == ["solo", "happy"]
     assert add_records[0].tags[-1] == "portrait"
     assert prepend_records[0].tags[0] == "portrait"
+    assert any(
+        "Batch delete tags completed:" in record.message
+        and "elapsed=" in record.message
+        for record in caplog.records
+    )
+    assert any(
+        "Batch replace tags completed:" in record.message
+        and "elapsed=" in record.message
+        for record in caplog.records
+    )
+    assert any(
+        "Batch add tags completed:" in record.message and "elapsed=" in record.message
+        for record in caplog.records
+    )
 
 
 def test_tag_edits_mark_records_dirty_and_edited() -> None:

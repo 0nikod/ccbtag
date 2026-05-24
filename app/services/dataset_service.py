@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+import time
 from dataclasses import dataclass
 
 from app.core.dataset import (
@@ -8,6 +10,9 @@ from app.core.dataset import (
     scan_dataset,
     update_record_text,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -24,9 +29,37 @@ class DatasetService:
     def open_folder(
         self, folder: str, metadata_location: str = "caption_json"
     ) -> SelectionResult:
-        records = scan_dataset(folder, metadata_location)
+        started = time.perf_counter()
+        logger.info(
+            "Opening dataset folder: folder=%s metadata_location=%s",
+            folder,
+            metadata_location,
+        )
+        try:
+            records = scan_dataset(folder, metadata_location)
+        except Exception:
+            logger.exception(
+                "Failed to open dataset folder: folder=%s metadata_location=%s elapsed=%.3fs",
+                folder,
+                metadata_location,
+                time.perf_counter() - started,
+            )
+            raise
         if not records:
+            logger.info(
+                "Opened dataset folder with no images: folder=%s metadata_location=%s elapsed=%.3fs",
+                folder,
+                metadata_location,
+                time.perf_counter() - started,
+            )
             return SelectionResult([], 0, "未找到图片")
+        logger.info(
+            "Opened dataset folder: folder=%s metadata_location=%s images=%d elapsed=%.3fs",
+            folder,
+            metadata_location,
+            len(records),
+            time.perf_counter() - started,
+        )
         return SelectionResult(records, 0, "已打开图片文件夹")
 
     def select_record(

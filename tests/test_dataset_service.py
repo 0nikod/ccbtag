@@ -1,5 +1,6 @@
-from pathlib import Path
 import json
+import logging
+from pathlib import Path
 
 from app.core.dataset import GENERATED, ImageRecord
 from app.services.dataset_service import DatasetService
@@ -11,6 +12,24 @@ def test_open_folder_without_images_returns_empty_message(tmp_path: Path) -> Non
     assert result.records == []
     assert result.index == 0
     assert result.message == "未找到图片"
+
+
+def test_open_folder_logs_image_count_and_elapsed(tmp_path: Path, caplog) -> None:
+    from tests.helpers import write_image
+
+    write_image(tmp_path / "0001.png")
+
+    with caplog.at_level(logging.INFO):
+        result = DatasetService().open_folder(tmp_path)
+
+    assert len(result.records) == 1
+    assert any("Opening dataset folder:" in record.message for record in caplog.records)
+    assert any(
+        "Opened dataset folder:" in record.message
+        and "images=1" in record.message
+        and "elapsed=" in record.message
+        for record in caplog.records
+    )
 
 
 def test_select_record_switches_after_syncing_current_form() -> None:

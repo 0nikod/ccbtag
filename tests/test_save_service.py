@@ -1,4 +1,5 @@
 import json
+import logging
 from dataclasses import replace
 from pathlib import Path
 
@@ -8,23 +9,31 @@ from app.core.dataset import scan_dataset
 from tests.helpers import build_services, make_config, write_image
 
 
-def test_save_current_syncs_form_and_updates_record_state(tmp_path: Path) -> None:
+def test_save_current_syncs_form_and_updates_record_state(
+    tmp_path: Path, caplog
+) -> None:
     write_image(tmp_path / "0001.png")
     records = scan_dataset(tmp_path)
     services = build_services()
 
-    result = services.save.save_current(
-        records,
-        0,
-        "solo",
-        "A girl is standing.",
-        "caption_json",
-    )
+    with caplog.at_level(logging.INFO):
+        result = services.save.save_current(
+            records,
+            0,
+            "solo",
+            "A girl is standing.",
+            "caption_json",
+        )
 
     assert result.records[0].saved is True
     assert result.records[0].dirty is False
     assert result.records[0].tags == ["solo"]
     assert result.records[0].nl == "A girl is standing."
+    assert any("Saving current caption:" in record.message for record in caplog.records)
+    assert any(
+        "Saved current caption:" in record.message and "elapsed=" in record.message
+        for record in caplog.records
+    )
 
 
 def test_save_all_syncs_current_form(tmp_path: Path) -> None:

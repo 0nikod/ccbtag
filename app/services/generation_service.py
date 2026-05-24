@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+import time
 from dataclasses import dataclass
 from typing import Iterable
 
@@ -14,6 +16,9 @@ from app.core.settings import AppConfig
 from app.core.tag_utils import TagRuleConfig, prediction_dicts_to_tags
 from app.models.registry import ModelRegistry
 from app.services.tag_category_service import TagCategoryService
+
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -50,6 +55,14 @@ class GenerationService:
         tag_model_display: str,
         kept_categories: Iterable[str] | None = None,
     ) -> GenerateResult:
+        started = time.perf_counter()
+        categories = None if kept_categories is None else tuple(kept_categories)
+        logger.info(
+            "Generating tags: file=%s model=%s kept_categories=%s",
+            record.file_name,
+            tag_model_display,
+            categories,
+        )
         try:
             model = self.registry.get_by_display("tag", tag_model_display)
             predictions = [
@@ -59,7 +72,7 @@ class GenerationService:
                 )
             ]
             predictions = self.tag_categories.filter_predictions(
-                predictions, kept_categories
+                predictions, categories
             )
             tags = prediction_dicts_to_tags(predictions, self.tag_rules)
             set_generated_tags(record, tags, predictions)
@@ -68,9 +81,22 @@ class GenerationService:
                 self.config.caption.metadata_location,
                 joiner=self.config.caption.joiner,
             )
+            logger.info(
+                "Generated tags: file=%s model=%s tags=%d elapsed=%.3fs",
+                record.file_name,
+                tag_model_display,
+                len(tags),
+                time.perf_counter() - started,
+            )
             return GenerateResult(True, f"Tag 生成完成: {record.file_name}")
         except Exception as exc:
             set_error(record, str(exc), "tag")
+            logger.exception(
+                "Failed to generate tags: file=%s model=%s elapsed=%.3fs",
+                record.file_name,
+                tag_model_display,
+                time.perf_counter() - started,
+            )
             return GenerateResult(False, f"Tag 生成失败: {exc}")
 
     def generate_nl(
@@ -79,12 +105,22 @@ class GenerationService:
         nl_model_display: str,
         request: NlRequest,
     ) -> GenerateResult:
+        started = time.perf_counter()
         try:
             model = self.registry.get_by_display("nl", nl_model_display)
             shuffle_tags = (
                 self.config.nl.shuffle_tags
                 if request.shuffle_tags is None
                 else request.shuffle_tags
+            )
+            logger.info(
+                "Generating NL: file=%s model=%s endpoint=%s request_model=%s resize_mode=%s shuffle_tags=%s",
+                record.file_name,
+                nl_model_display,
+                request.endpoint,
+                request.model_name,
+                request.image_resize_mode,
+                shuffle_tags,
             )
             generated = model.predict(
                 record.image_path,
@@ -104,9 +140,22 @@ class GenerationService:
                 self.config.caption.metadata_location,
                 joiner=self.config.caption.joiner,
             )
+            logger.info(
+                "Generated NL: file=%s model=%s chars=%d elapsed=%.3fs",
+                record.file_name,
+                nl_model_display,
+                len(record.nl),
+                time.perf_counter() - started,
+            )
             return GenerateResult(True, f"NL 生成完成: {record.file_name}")
         except Exception as exc:
             set_error(record, str(exc), "nl")
+            logger.exception(
+                "Failed to generate NL: file=%s model=%s elapsed=%.3fs",
+                record.file_name,
+                nl_model_display,
+                time.perf_counter() - started,
+            )
             return GenerateResult(False, f"NL 生成失败: {exc}")
 
     def generate_both(

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
@@ -7,6 +8,9 @@ from typing import Any, Callable
 
 from app.core.model_paths import resolve_model_dir
 from app.models.base import ModelLoadError
+
+
+logger = logging.getLogger(__name__)
 
 
 DownloadFile = Callable[..., str]
@@ -99,6 +103,12 @@ def ensure_onnx_bundle(
     source: str,
     model_dir: str | os.PathLike[str] | None = None,
 ) -> ResolvedOnnxBundle:
+    logger.info(
+        "Ensuring ONNX bundle: repo=%s source=%s model_dir=%s",
+        spec.repo_id,
+        source,
+        model_dir,
+    )
     return ensure_hf_onnx_bundle(
         spec, create_download_file(source), model_dir=model_dir
     )
@@ -122,7 +132,14 @@ def open_onnx_session(
     key = (str(onnx_path.expanduser().resolve()), providers)
     if key not in _SESSION_CACHE:
         factory = session_factory or ort_module.InferenceSession
+        logger.info(
+            "Opening ONNX session: path=%s providers=%s",
+            onnx_path,
+            providers,
+        )
         _SESSION_CACHE[key] = factory(str(onnx_path), providers=list(providers))
+    else:
+        logger.info("Reusing ONNX session: path=%s providers=%s", onnx_path, providers)
     return _SESSION_CACHE[key]
 
 
@@ -133,6 +150,8 @@ def clear_onnx_session_cache() -> None:
 def close_onnx_session(onnx_path: Path) -> None:
     key_path = str(onnx_path.expanduser().resolve())
     keys_to_remove = [k for k in _SESSION_CACHE if k[0] == key_path]
+    if keys_to_remove:
+        logger.info("Closing ONNX session: path=%s", onnx_path)
     for k in keys_to_remove:
         del _SESSION_CACHE[k]
 
@@ -183,6 +202,12 @@ def _download_bundle_file(
     filename: str,
     download_file: DownloadFile,
 ) -> None:
+    logger.info(
+        "Downloading ONNX bundle file: repo=%s file=%s root=%s",
+        spec.repo_id,
+        filename,
+        root,
+    )
     download_file(
         repo_id=spec.repo_id,
         filename=spec.repo_file(filename),

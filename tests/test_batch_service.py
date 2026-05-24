@@ -1,3 +1,4 @@
+import logging
 from dataclasses import replace
 from pathlib import Path
 import sqlite3
@@ -51,7 +52,9 @@ def make_service(
 ) -> BatchService:
     base_config = make_config()
     config = make_config(nl=replace(base_config.nl, shuffle_tags=shuffle_tags))
-    return BatchService(GenerationService(config, registry, tag_categories=tag_categories))
+    return BatchService(
+        GenerationService(config, registry, tag_categories=tag_categories)
+    )
 
 
 def test_empty_records_are_safe() -> None:
@@ -61,18 +64,31 @@ def test_empty_records_are_safe() -> None:
     assert result.errors == 0
 
 
-def test_skip_edited_true_skips_manual_record() -> None:
+def test_skip_edited_true_skips_manual_record(caplog) -> None:
     records = make_records()
     update_record_text(records[0], "manual", "")
     registry = FakeRegistry(tag_model=FakeTagModel([PredictionStub("solo", 0.9)]))
 
-    make_service(registry).generate(
-        records,
-        BatchGenerateOptions(tag_model_display="PixAI Tagger v0.9", skip_edited=True),
-    )
+    with caplog.at_level(logging.INFO):
+        make_service(registry).generate(
+            records,
+            BatchGenerateOptions(
+                tag_model_display="PixAI Tagger v0.9", skip_edited=True
+            ),
+        )
 
     assert records[0].tags == ["manual"]
     assert records[1].tags == ["solo"]
+    assert any(
+        "Starting batch generation:" in record.message
+        and "eligible=1" in record.message
+        and "skipped=1" in record.message
+        for record in caplog.records
+    )
+    assert any(
+        "Completed batch generation:" in record.message and "elapsed=" in record.message
+        for record in caplog.records
+    )
 
 
 def test_skip_edited_false_does_not_skip_manual_record() -> None:

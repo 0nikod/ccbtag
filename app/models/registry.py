@@ -1,10 +1,15 @@
 from __future__ import annotations
 
 import json
+import logging
+import time
 from importlib import import_module
 from pathlib import Path
 
 from app.models.base import BaseModel, ModelConfig, ModelLoadError
+
+
+logger = logging.getLogger(__name__)
 
 
 ENTRYPOINTS: dict[str, str] = {
@@ -50,12 +55,33 @@ class ModelRegistry:
         self.unload_task(task, keep_model_id=model_id)
 
         if model_id in self._instances:
+            logger.info(
+                "Reusing loaded model: task=%s model_id=%s display_name=%s",
+                task,
+                model_id,
+                config.display_name,
+            )
             return self._instances[model_id]
 
         cls = self._load_entrypoint(config.entry)
         model = cls(config)
+        started = time.perf_counter()
+        logger.info(
+            "Loading model: task=%s model_id=%s display_name=%s backend=%s",
+            task,
+            model_id,
+            config.display_name,
+            config.backend,
+        )
         model.load()
         self._instances[model_id] = model
+        logger.info(
+            "Loaded model: task=%s model_id=%s display_name=%s elapsed=%.3fs",
+            task,
+            model_id,
+            config.display_name,
+            time.perf_counter() - started,
+        )
         return model
 
     def _load_entrypoint(self, entry: str) -> type[BaseModel]:
@@ -80,6 +106,12 @@ class ModelRegistry:
         for existing_id, instance in list(self._instances.items()):
             if instance.config.task != task or existing_id == keep_model_id:
                 continue
+            logger.info(
+                "Unloading model: task=%s model_id=%s display_name=%s",
+                task,
+                existing_id,
+                instance.display_name,
+            )
             instance.unload()
             del self._instances[existing_id]
 
