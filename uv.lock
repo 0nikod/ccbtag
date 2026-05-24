@@ -68,6 +68,7 @@ dependencies = [
     { name = "onnxruntime-gpu" },
     { name = "openai" },
     { name = "pillow" },
+    { name = "rich" },
 ]
 
 [package.dev-dependencies]
@@ -86,6 +87,7 @@ requires-dist = [
     { name = "onnxruntime-gpu", specifier = ">=1.26.0" },
     { name = "openai", specifier = ">=1.0" },
     { name = "pillow", specifier = ">=10.4" },
+    { name = "rich", specifier = ">=15.0.0" },
 ]
 
 [package.metadata.requires-dev]

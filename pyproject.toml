@@ -16,6 +16,7 @@ dependencies = [
     "openai>=1.0",
     "pillow>=10.4",
     "modelscope>=1.17",
+    "rich>=15.0.0",
 ]
 
 [project.scripts]
