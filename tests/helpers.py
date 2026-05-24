@@ -82,13 +82,19 @@ class FakeRegistry:
         self.nl_model = nl_model or FakeNlModel()
         self.endpoint = endpoint
         self.model_name = model_name
+        self.calls: list[tuple[str, str]] = []
 
     def get_by_display(self, task: str, display_name: str) -> object:
+        self.calls.append(("get", task))
         if task == "tag":
             return self.tag_model
         if task == "nl":
             return self.nl_model
         raise KeyError(task)
+
+    def unload_task(self, task: str, keep_model_id: str | None = None) -> None:
+        del keep_model_id
+        self.calls.append(("unload", task))
 
     def display_choices(self, task: str) -> list[str]:
         if task == "tag":

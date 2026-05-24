@@ -47,10 +47,7 @@ class ModelRegistry:
         task = config.task
 
         # Unload other loaded models for the same task
-        for existing_id, instance in list(self._instances.items()):
-            if instance.config.task == task and existing_id != model_id:
-                instance.unload()
-                del self._instances[existing_id]
+        self.unload_task(task, keep_model_id=model_id)
 
         if model_id in self._instances:
             return self._instances[model_id]
@@ -78,6 +75,13 @@ class ModelRegistry:
     def get_by_display(self, task: str, display_name: str) -> BaseModel:
         config = self.config_by_display(task, display_name)
         return self.get_model(config.id)
+
+    def unload_task(self, task: str, keep_model_id: str | None = None) -> None:
+        for existing_id, instance in list(self._instances.items()):
+            if instance.config.task != task or existing_id == keep_model_id:
+                continue
+            instance.unload()
+            del self._instances[existing_id]
 
     def _load_configs(self) -> list[ModelConfig]:
         with self.config_path.open("r", encoding="utf-8") as handle:

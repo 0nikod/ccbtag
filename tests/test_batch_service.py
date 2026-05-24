@@ -185,6 +185,60 @@ def test_tag_success_nl_failure_sets_only_nl_error() -> None:
     assert records[0].nl_status == "error"
 
 
+def test_both_mode_generates_all_tags_then_unloads_tagger_then_generates_nl() -> None:
+    records = make_records()
+    registry = FakeRegistry(
+        tag_model=FakeTagModel([PredictionStub("solo", 0.9)]),
+        nl_model=FakeNlModel(response="generated nl"),
+    )
+
+    make_service(registry).generate(
+        records,
+        BatchGenerateOptions(
+            tag_model_display="PixAI Tagger v0.9",
+            nl_model_display="OpenAI Completions",
+            nl_request=NlRequest("http://127.0.0.1:8000/v1", "model"),
+        ),
+    )
+
+    assert registry.calls == [
+        ("get", "tag"),
+        ("get", "tag"),
+        ("unload", "tag"),
+        ("get", "nl"),
+        ("get", "nl"),
+    ]
+
+
+def test_both_mode_skips_nl_for_records_with_failed_tag_generation() -> None:
+    records = make_records()
+
+    class FailFirstTagModel(FakeTagModel):
+        def predict(self, image_path: str, **kwargs: object) -> list[PredictionStub]:
+            self.calls.append({"image_path": image_path, **kwargs})
+            if len(self.calls) == 1:
+                raise RuntimeError("tag boom")
+            return self.predictions
+
+    registry = FakeRegistry(
+        tag_model=FailFirstTagModel([PredictionStub("solo", 0.9)]),
+        nl_model=FakeNlModel(response="generated nl"),
+    )
+
+    result = make_service(registry).generate(
+        records,
+        BatchGenerateOptions(
+            tag_model_display="PixAI Tagger v0.9",
+            nl_model_display="OpenAI Completions",
+            nl_request=NlRequest("http://127.0.0.1:8000/v1", "model"),
+        ),
+    )
+
+    assert result.errors == 1
+    assert len(registry.nl_model.calls) == 1
+    assert registry.nl_model.calls[0]["image_path"] == "2.png"
+
+
 def test_missing_nl_request_raises_for_nl_only_and_both() -> None:
     service = make_service(FakeRegistry())
 

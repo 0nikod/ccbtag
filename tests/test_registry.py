@@ -34,6 +34,30 @@ class RegistryTest(unittest.TestCase):
         self.assertNotIn("pixai_tagger_v0_9", registry._instances)
         self.assertIn("cl_tagger_1_02", registry._instances)
 
+    def test_unload_task_unloads_loaded_models_for_task(self) -> None:
+        from app.models.base import BaseModel
+
+        class FakeModel(BaseModel):
+            def load(self) -> None:
+                self.loaded = True
+
+        registry = ModelRegistry(Path("app/config/models.json"))
+
+        def fake_load_entrypoint(entry: str) -> type[BaseModel]:
+            return FakeModel
+
+        registry._load_entrypoint = fake_load_entrypoint
+
+        tag_model = registry.get_model("pixai_tagger_v0_9")
+        nl_model = registry.get_model("openai_completions")
+
+        registry.unload_task("tag")
+
+        self.assertFalse(tag_model.loaded)
+        self.assertTrue(nl_model.loaded)
+        self.assertNotIn("pixai_tagger_v0_9", registry._instances)
+        self.assertIn("openai_completions", registry._instances)
+
     def test_app_code_no_longer_imports_imgutils(self) -> None:
         for path in Path("app").rglob("*.py"):
             self.assertNotIn(
