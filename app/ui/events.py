@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from threading import Event, Lock
 from typing import Any
 
 import gradio as gr
@@ -34,6 +35,8 @@ METADATA_LOCATION_VALUES = {
 }
 
 SERVICES = create_app_services(CONFIG_ROOT)
+_BATCH_STOP_LOCK = Lock()
+_BATCH_STOP_EVENTS: dict[str, Event] = {}
 
 
 def set_services_for_test(services: AppServices) -> None:
@@ -369,24 +372,25 @@ def batch_generate_tags(
     kept_categories: list[str] | None,
     skip_edited: bool,
     progress: gr.Progress | None = None,
-) -> presenter.DatasetPayload:
+    request: gr.Request | None = None,
+):
     records = deserialize_records(records_data)
     if not records:
-        return presenter.empty_dataset_payload("没有图片")
+        yield presenter.empty_dataset_payload("没有图片")
+        return
     index = SERVICES.dataset.sync_current_form(
         records, current_index, tags_text, nl_text
     )
-    result = SERVICES.batch.generate(
+    yield from _stream_batch_generation(
         records,
+        index,
         BatchGenerateOptions(
             tag_model_display=tag_model_display,
             kept_tag_categories=normalize_kept_tag_categories(kept_categories),
             skip_edited=skip_edited,
         ),
         progress,
-    )
-    return presenter.dataset_payload(
-        records, index, result.message, SERVICES.config.caption
+        request,
     )
 
 
@@ -403,15 +407,18 @@ def batch_generate_nl(
     shuffle_tags: bool | None = None,
     image_resize_mode: str = "None",
     progress: gr.Progress | None = None,
-) -> presenter.DatasetPayload:
+    request: gr.Request | None = None,
+):
     records = deserialize_records(records_data)
     if not records:
-        return presenter.empty_dataset_payload("没有图片")
+        yield presenter.empty_dataset_payload("没有图片")
+        return
     index = SERVICES.dataset.sync_current_form(
         records, current_index, tags_text, nl_text
     )
-    result = SERVICES.batch.generate(
+    yield from _stream_batch_generation(
         records,
+        index,
         BatchGenerateOptions(
             nl_model_display=nl_model_display,
             skip_edited=skip_edited,
@@ -424,9 +431,7 @@ def batch_generate_nl(
             ),
         ),
         progress,
-    )
-    return presenter.dataset_payload(
-        records, index, result.message, SERVICES.config.caption
+        request,
     )
 
 
@@ -445,15 +450,18 @@ def batch_generate_both(
     shuffle_tags: bool | None = None,
     image_resize_mode: str = "None",
     progress: gr.Progress | None = None,
-) -> presenter.DatasetPayload:
+    request: gr.Request | None = None,
+):
     records = deserialize_records(records_data)
     if not records:
-        return presenter.empty_dataset_payload("没有图片")
+        yield presenter.empty_dataset_payload("没有图片")
+        return
     index = SERVICES.dataset.sync_current_form(
         records, current_index, tags_text, nl_text
     )
-    result = SERVICES.batch.generate(
+    yield from _stream_batch_generation(
         records,
+        index,
         BatchGenerateOptions(
             tag_model_display=tag_model_display,
             kept_tag_categories=normalize_kept_tag_categories(kept_categories),
@@ -468,10 +476,19 @@ def batch_generate_both(
             ),
         ),
         progress,
+        request,
     )
-    return presenter.dataset_payload(
-        records, index, result.message, SERVICES.config.caption
-    )
+
+
+def stop_batch_generation(request: gr.Request | None = None) -> str:
+    _batch_stop_event(request).set()
+    return "正在请求停止批量生成..."
+
+
+def cleanup_session_state(request: gr.Request | None = None) -> None:
+    session_key = _batch_session_key(request)
+    with _BATCH_STOP_LOCK:
+        _BATCH_STOP_EVENTS.pop(session_key, None)
 
 
 def batch_delete_tag(
@@ -531,6 +548,41 @@ def batch_add_tag(
     return presenter.dataset_payload(
         records, index, result.message, SERVICES.config.caption
     )
+
+
+def _stream_batch_generation(
+    records, index: int, options: BatchGenerateOptions, progress, request
+):
+    stop_event = _batch_stop_event(request)
+    stop_event.clear()
+    try:
+        for result in SERVICES.batch.generate_iter(
+            records,
+            options,
+            progress,
+            should_stop=stop_event.is_set,
+        ):
+            yield presenter.dataset_payload(
+                records, index, result.message, SERVICES.config.caption
+            )
+    finally:
+        stop_event.clear()
+
+
+def _batch_stop_event(request: gr.Request | None) -> Event:
+    session_key = _batch_session_key(request)
+    with _BATCH_STOP_LOCK:
+        event = _BATCH_STOP_EVENTS.get(session_key)
+        if event is None:
+            event = Event()
+            _BATCH_STOP_EVENTS[session_key] = event
+        return event
+
+
+def _batch_session_key(request: gr.Request | None) -> str:
+    if request and request.session_hash:
+        return request.session_hash
+    return "__default__"
 
 
 def _event_index(event: Any) -> int:

@@ -180,6 +180,27 @@ def test_single_item_failures_do_not_stop_batch_and_errors_are_counted() -> None
     assert records[1].tag_status == "error"
 
 
+def test_stop_request_stops_before_next_record_and_keeps_completed_updates() -> None:
+    records = make_records()
+    registry = FakeRegistry(tag_model=FakeTagModel([PredictionStub("solo", 0.9)]))
+    stop_requested = {"value": False}
+
+    results = []
+    for result in make_service(registry).generate_iter(
+        records,
+        BatchGenerateOptions(tag_model_display="PixAI Tagger v0.9"),
+        should_stop=lambda: stop_requested["value"],
+    ):
+        results.append(result)
+        if result.updated == 1 and not result.stopped:
+            stop_requested["value"] = True
+
+    assert results[-1].stopped is True
+    assert results[-1].updated == 1
+    assert records[0].tags == ["solo"]
+    assert records[1].tags == []
+
+
 def test_tag_success_nl_failure_sets_only_nl_error() -> None:
     records = make_records()
     registry = FakeRegistry(

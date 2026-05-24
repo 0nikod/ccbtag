@@ -23,6 +23,12 @@ class _Event:
         self.index = index
 
 
+def _final_batch_payload(payloads):
+    results = list(payloads)
+    assert results
+    return results[-1]
+
+
 def write_tag_db(path: Path) -> Path:
     connection = sqlite3.connect(path)
     try:
@@ -50,14 +56,13 @@ def test_open_folder_failure_matches_open_outputs() -> None:
 
 
 def test_empty_batch_actions_match_open_outputs() -> None:
-    assert (
-        len(
+    assert len(
+        _final_batch_payload(
             events.batch_generate_tags(
                 [], 0, "", "", "PixAI Tagger v0.9", ["general"], True
             )
         )
-        == 8
-    )
+    ) == 8
     assert len(events.batch_delete_tag([], 0, "", "", "solo")) == 8
 
 
@@ -123,8 +128,8 @@ def test_generate_save_batch_and_tag_edit_return_dataset_payload(
             == 8
         )
         assert len(events.save_current(records, 0, "", "", "caption_json")) == 8
-        assert (
-            len(
+        assert len(
+            _final_batch_payload(
                 events.batch_generate_tags(
                     records,
                     0,
@@ -135,8 +140,7 @@ def test_generate_save_batch_and_tag_edit_return_dataset_payload(
                     True,
                 )
             )
-            == 8
-        )
+        ) == 8
         assert len(events.batch_delete_tag(records, 0, "", "", "solo")) == 8
     finally:
         events.set_services_for_test(previous)
@@ -178,14 +182,16 @@ def test_batch_generate_tags_skips_current_unsaved_manual_edit(tmp_path: Path) -
             )
         )
 
-        payload = events.batch_generate_tags(
-            serialize_records(records),
-            0,
-            "manual tag",
-            "",
-            "PixAI Tagger v0.9",
-            ["general"],
-            True,
+        payload = _final_batch_payload(
+            events.batch_generate_tags(
+                serialize_records(records),
+                0,
+                "manual tag",
+                "",
+                "PixAI Tagger v0.9",
+                ["general"],
+                True,
+            )
         )
 
         updated = deserialize_records(payload[0])
@@ -195,6 +201,55 @@ def test_batch_generate_tags_skips_current_unsaved_manual_edit(tmp_path: Path) -
         assert updated[1].tags == ["solo"]
         assert updated[1].dirty is True
         assert payload[6] == 0
+    finally:
+        events.set_services_for_test(previous)
+
+
+def test_stop_batch_generation_keeps_generated_draft(tmp_path: Path) -> None:
+    write_image(tmp_path / "0001.png")
+    write_image(tmp_path / "0002.png")
+    records = serialize_records(scan_dataset(tmp_path))
+    previous = events.SERVICES
+    try:
+        events.set_services_for_test(
+            build_services(
+                registry=FakeRegistry(
+                    tag_model=FakeTagModel(),
+                )
+            )
+        )
+
+        payloads = events.batch_generate_tags(
+            records,
+            0,
+            "",
+            "",
+            "PixAI Tagger v0.9",
+            ["general"],
+            False,
+        )
+        first_payload = next(payloads)
+        assert first_payload[7].startswith("Tag 已更新:")
+
+        assert events.stop_batch_generation() == "正在请求停止批量生成..."
+
+        final_payload = _final_batch_payload(payloads)
+        updated = deserialize_records(final_payload[0])
+        assert updated[0].tags == ["solo"]
+        assert updated[1].tags == []
+        assert final_payload[7].startswith("批量生成已停止:")
+
+        first_metadata = json.loads(
+            (tmp_path / "caption_json" / "0001.caption.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        assert first_metadata["draft"]["tags"][0]["name"] == "solo"
+        assert not (tmp_path / "caption_json" / "0002.caption.json").exists()
+
+        reopened = scan_dataset(tmp_path)
+        assert reopened[0].tags == ["solo"]
+        assert reopened[0].dirty is True
     finally:
         events.set_services_for_test(previous)
 

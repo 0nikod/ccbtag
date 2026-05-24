@@ -200,6 +200,9 @@ def build_app() -> gr.Blocks:
                                 batch_tag_button = gr.Button("批量生成 Tag")
                                 batch_nl_button = gr.Button("批量生成 NL")
                                 batch_both_button = gr.Button("批量生成 Tag + NL")
+                                stop_batch_button = gr.Button(
+                                    "停止批量生成", variant="stop"
+                                )
 
                         with gr.Column(variant="panel"):
                             gr.Markdown("### 批量替换与删除")
@@ -377,6 +380,8 @@ def build_app() -> gr.Blocks:
                 skip_edited,
             ],
             outputs=open_outputs,
+            concurrency_id="batch_generation",
+            concurrency_limit=1,
         )
         batch_nl_button.click(
             events.batch_generate_nl,
@@ -394,6 +399,8 @@ def build_app() -> gr.Blocks:
                 image_resize_mode,
             ],
             outputs=open_outputs,
+            concurrency_id="batch_generation",
+            concurrency_limit=1,
         )
         batch_both_button.click(
             events.batch_generate_both,
@@ -413,6 +420,14 @@ def build_app() -> gr.Blocks:
                 image_resize_mode,
             ],
             outputs=open_outputs,
+            concurrency_id="batch_generation",
+            concurrency_limit=1,
+        )
+        stop_batch_button.click(
+            events.stop_batch_generation,
+            inputs=None,
+            outputs=[status],
+            queue=False,
         )
         delete_tag_button.click(
             events.batch_delete_tag,
@@ -443,5 +458,6 @@ def build_app() -> gr.Blocks:
             ],
             outputs=open_outputs,
         )
+        app.unload(events.cleanup_session_state)
 
     return app
