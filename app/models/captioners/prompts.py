@@ -39,7 +39,9 @@ def _as_trait_dict(value: Any) -> dict[str, dict[str, Any]]:
         try:
             value = json.loads(value)
         except json.JSONDecodeError as exc:
-            raise ValueError("Character trait fields must be dicts or valid JSON strings.") from exc
+            raise ValueError(
+                "Character trait fields must be dicts or valid JSON strings."
+            ) from exc
 
     if not isinstance(value, Mapping):
         raise TypeError("Character trait fields must be mappings.")
@@ -86,7 +88,9 @@ def make_user_query(
     """
     if c_type not in prompts_b:
         valid_types = ", ".join(sorted(prompts_b))
-        raise ValueError(f"Unknown caption type: {c_type!r}. Valid types: {valid_types}")
+        raise ValueError(
+            f"Unknown caption type: {c_type!r}. Valid types: {valid_types}"
+        )
 
     if use_names is None:
         use_names = prompts_names_only.get(c_type, False)
@@ -114,14 +118,20 @@ def make_user_query(
                 f"make sure to use them: [{chars_string}].\n\n"
             )
 
-            chars_popular_tags = _as_trait_dict(item.get("char_p_tags", EMPTY_CHARACTER_TRAITS))
-            chars_description = _as_trait_dict(item.get("char_descr", EMPTY_CHARACTER_TRAITS))
+            chars_popular_tags = _as_trait_dict(
+                item.get("char_p_tags", EMPTY_CHARACTER_TRAITS)
+            )
+            chars_description = _as_trait_dict(
+                item.get("char_descr", EMPTY_CHARACTER_TRAITS)
+            )
 
             if chars_popular_tags["chars"] and (add_char_tags or add_description):
                 user_request += "# Known traits for characters\n"
 
                 if add_char_tags:
-                    user_request += "Here are popular tags for each characters on picture:\n"
+                    user_request += (
+                        "Here are popular tags for each characters on picture:\n"
+                    )
                     for c_name, c_tags in chars_popular_tags["chars"].items():
                         name = _format_name(c_name, underscores_replace)
                         tags_s = _format_tags(list(c_tags), underscores_replace)
@@ -153,6 +163,8 @@ def make_user_query(
 
         user_request += "\n"
     else:
-        user_request += "# Characters on picture:\nAvoid to guess names for characters.\n"
+        user_request += (
+            "# Characters on picture:\nAvoid to guess names for characters.\n"
+        )
 
     return user_request

@@ -13,14 +13,18 @@ TAG_CATEGORY_IDS = {
     "meta": 5,
 }
 DEFAULT_KEPT_TAG_CATEGORIES = ("general",)
-DEFAULT_TAG_DB_PATH = Path(__file__).resolve().parents[2] / "data" / "tags_processed.sqlite"
+DEFAULT_TAG_DB_PATH = (
+    Path(__file__).resolve().parents[2] / "data" / "tags_processed.sqlite"
+)
 
 
 def tag_category_choices() -> list[str]:
     return list(TAG_CATEGORY_IDS)
 
 
-def normalize_kept_tag_categories(values: Iterable[str] | None) -> tuple[str, ...] | None:
+def normalize_kept_tag_categories(
+    values: Iterable[str] | None,
+) -> tuple[str, ...] | None:
     if values is None:
         return None
     normalized: list[str] = []
@@ -82,7 +86,9 @@ class TagCategoryService:
             cursor = connection.execute("SELECT name, alias, category FROM tags")
             for name, alias, category in cursor:
                 if name is not None:
-                    categories_by_key.setdefault(str(name).strip().casefold(), int(category))
+                    categories_by_key.setdefault(
+                        str(name).strip().casefold(), int(category)
+                    )
                 if alias:
                     for item in str(alias).split(","):
                         key = item.strip().casefold()

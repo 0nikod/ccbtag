@@ -272,7 +272,9 @@ def generate_nl(
     index = SERVICES.dataset.sync_current_form(
         records, current_index, tags_text, nl_text
     )
-    request = NlRequest(nl_endpoint, nl_model_name, nl_api_key, shuffle_tags, image_resize_mode)
+    request = NlRequest(
+        nl_endpoint, nl_model_name, nl_api_key, shuffle_tags, image_resize_mode
+    )
     result = SERVICES.generation.generate_nl(records[index], nl_model_display, request)
     return presenter.dataset_payload(
         records, index, result.message, SERVICES.config.caption
@@ -299,7 +301,9 @@ def generate_tag_and_nl(
     index = SERVICES.dataset.sync_current_form(
         records, current_index, tags_text, nl_text
     )
-    request = NlRequest(nl_endpoint, nl_model_name, nl_api_key, shuffle_tags, image_resize_mode)
+    request = NlRequest(
+        nl_endpoint, nl_model_name, nl_api_key, shuffle_tags, image_resize_mode
+    )
     result = SERVICES.generation.generate_both(
         records[index],
         tag_model_display,

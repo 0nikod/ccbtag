@@ -83,7 +83,9 @@ class OpenAIHttpCaptioner(BaseCaptioner):
                             {"type": "text", "text": user_prompt},
                             {
                                 "type": "image_url",
-                                "image_url": {"url": self._data_url(path, image_resize_mode)},
+                                "image_url": {
+                                    "url": self._data_url(path, image_resize_mode)
+                                },
                             },
                         ],
                     },

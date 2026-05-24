@@ -100,7 +100,11 @@ def test_generate_save_batch_and_tag_edit_return_dataset_payload(
         events.set_services_for_test(build_services(registry=FakeRegistry()))
 
         assert (
-            len(events.generate_tag(records, 0, "PixAI Tagger v0.9", ["general"], "", ""))
+            len(
+                events.generate_tag(
+                    records, 0, "PixAI Tagger v0.9", ["general"], "", ""
+                )
+            )
             == 8
         )
         assert (
@@ -222,9 +226,7 @@ def test_default_shuffle_tags_uses_config_nl() -> None:
 def test_default_nl_image_resize_mode_uses_config_ui() -> None:
     previous = events.SERVICES
     try:
-        config = make_config(
-            ui=replace(previous.config.ui, nl_image_resize_mode="1MP")
-        )
+        config = make_config(ui=replace(previous.config.ui, nl_image_resize_mode="1MP"))
         events.set_services_for_test(build_services(config=config))
 
         assert events.default_nl_image_resize_mode() == "1MP"
@@ -296,7 +298,9 @@ def test_generate_tag_keeps_only_selected_categories(tmp_path: Path) -> None:
                         ]
                     )
                 ),
-                tag_categories=TagCategoryService(write_tag_db(tmp_path / "tags.sqlite")),
+                tag_categories=TagCategoryService(
+                    write_tag_db(tmp_path / "tags.sqlite")
+                ),
             )
         )
 
