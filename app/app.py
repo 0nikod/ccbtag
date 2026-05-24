@@ -5,8 +5,6 @@ import logging
 from app.core.logging_config import configure_logging
 from app.core.model_paths import apply_default_model_cache_env
 
-configure_logging()
-
 logger = logging.getLogger(__name__)
 APP_CSS = ""
 SHORTCUT_JS = ""
@@ -32,6 +30,7 @@ def _ensure_layout_exports() -> None:
 
 
 def main() -> None:
+    configure_logging()
     logger.info("Starting CCBTag GUI")
     apply_default_model_cache_env()
     _ensure_layout_exports()

@@ -106,14 +106,24 @@ class ModelRegistry:
         for existing_id, instance in list(self._instances.items()):
             if instance.config.task != task or existing_id == keep_model_id:
                 continue
-            logger.info(
-                "Unloading model: task=%s model_id=%s display_name=%s",
-                task,
-                existing_id,
-                instance.display_name,
-            )
-            instance.unload()
-            del self._instances[existing_id]
+            self.unload_model(existing_id, instance)
+
+    def unload_model(self, model_id: str, instance: BaseModel) -> None:
+        logger.info(
+            "Unloading model in 10 seconds: task=%s model_id=%s display_name=%s",
+            instance.config.task,
+            model_id,
+            instance.display_name,
+        )
+        time.sleep(10)
+        logger.info(
+            "Unloading model: task=%s model_id=%s display_name=%s",
+            instance.config.task,
+            model_id,
+            instance.display_name,
+        )
+        instance.unload()
+        del self._instances[model_id]
 
     def _load_configs(self) -> list[ModelConfig]:
         with self.config_path.open("r", encoding="utf-8") as handle:

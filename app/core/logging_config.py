@@ -3,8 +3,11 @@ from __future__ import annotations
 import logging
 import sys
 
+from rich.console import Console
+from rich.logging import RichHandler
 
-LOG_FORMAT = "%(asctime)s | %(levelname)s | %(name)s | %(message)s"
+
+LOG_FORMAT = "%(message)s"
 
 
 def configure_logging(level: int = logging.INFO) -> None:
@@ -16,7 +19,14 @@ def configure_logging(level: int = logging.INFO) -> None:
         _configure_library_levels()
         return
 
-    handler = logging.StreamHandler(stream=sys.__stderr__)
+    handler = RichHandler(
+        console=Console(file=sys.__stderr__),
+        show_time=True,
+        show_level=True,
+        show_path=False,
+        markup=False,
+        rich_tracebacks=True,
+    )
     handler._ccbtag_handler = True  # type: ignore[attr-defined]
     handler.setFormatter(logging.Formatter(LOG_FORMAT))
     root_logger.addHandler(handler)

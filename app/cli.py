@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import argparse
+import logging
 import os
 
+from app.core.logging_config import configure_logging
 from app.core.model_paths import (
     DEFAULT_MODEL_DIR,
     DEFAULT_MODEL_SOURCE,
@@ -13,6 +15,9 @@ from app.core.model_paths import (
 from app.core.onnx_bundles import ensure_onnx_bundle
 from app.models.downloads import iter_downloadable_onnx_bundle_specs
 from app.models.registry import default_registry
+
+
+logger = logging.getLogger(__name__)
 
 
 def parse_download_models_args() -> argparse.Namespace:
@@ -38,11 +43,17 @@ def download_model_bundles(model_dir: str, source: str) -> None:
     for config, spec in iter_downloadable_onnx_bundle_specs(
         registry.configs, resolved_source
     ):
-        print(f"下载 {config.display_name}: {resolved_source} -> {spec.repo_id}")
+        logger.info(
+            "下载 %s: %s -> %s",
+            config.display_name,
+            resolved_source,
+            spec.repo_id,
+        )
         ensure_onnx_bundle(spec, resolved_source, model_dir=resolved_dir)
 
 
 def download_models_main() -> None:
+    configure_logging()
     args = parse_download_models_args()
     download_model_bundles(args.model_dir, args.source)
-    print("模型下载完成")
+    logger.info("模型下载完成")

@@ -24,6 +24,7 @@ class _FakeApp:
 def test_main_launches_with_css_and_js(monkeypatch) -> None:
     fake_app = _FakeApp()
     env_applied: list[bool] = []
+    logging_configured: list[bool] = []
 
     monkeypatch.setattr(app_module, "build_app", lambda: fake_app)
     monkeypatch.setattr(
@@ -31,9 +32,15 @@ def test_main_launches_with_css_and_js(monkeypatch) -> None:
         "apply_default_model_cache_env",
         lambda: env_applied.append(True),
     )
+    monkeypatch.setattr(
+        app_module,
+        "configure_logging",
+        lambda: logging_configured.append(True),
+    )
 
     app_module.main()
 
+    assert logging_configured == [True]
     assert env_applied == [True]
     assert fake_app.queue_called is True
     assert fake_app.queued.launched_with == {

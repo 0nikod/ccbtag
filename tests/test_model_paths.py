@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 from pathlib import Path
 
@@ -261,3 +262,16 @@ def test_download_models_main_uses_default_modelscope(monkeypatch) -> None:
     download_models_main()
 
     assert calls == [("model", DEFAULT_MODEL_SOURCE)]
+
+
+def test_download_models_main_logs_completion(monkeypatch, caplog) -> None:
+    monkeypatch.delenv("CCBTAG_MODEL_SOURCE", raising=False)
+    monkeypatch.setattr("sys.argv", ["ccbtag-download-models"])
+    monkeypatch.setattr(
+        "app.cli.download_model_bundles", lambda model_dir, source: None
+    )
+
+    with caplog.at_level(logging.INFO):
+        download_models_main()
+
+    assert any(record.message == "模型下载完成" for record in caplog.records)
