@@ -33,7 +33,7 @@ class UiDefaults:
     nl_endpoint: str = "http://127.0.0.1:8000/v1"
     nl_model_name: str = "toriigate-0.5"
     nl_api_key: str = ""
-    nl_image_resize_mode: str = "None"
+    nl_image_resize_mode: str = "1MP"
 
 
 @dataclass(frozen=True)
@@ -128,5 +128,5 @@ def _ui_config(data: dict[str, Any]) -> UiDefaults:
         nl_endpoint=str(data.get("nl_endpoint", "http://127.0.0.1:8000/v1")),
         nl_model_name=str(data.get("nl_model_name", "toriigate-0.5")),
         nl_api_key=str(data.get("nl_api_key", "")),
-        nl_image_resize_mode=str(data.get("nl_image_resize_mode", "None")),
+        nl_image_resize_mode=str(data.get("nl_image_resize_mode", "1MP")),
     )

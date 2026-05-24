@@ -26,6 +26,7 @@
     "metadata_location": "caption_json",
     "nl_endpoint": "http://127.0.0.1:8000/v1",
     "nl_model_name": "toriigate-0.5",
-    "nl_api_key": ""
+    "nl_api_key": "",
+    "nl_image_resize_mode": "1MP"
   }
 }
