@@ -103,6 +103,14 @@ def default_nl_image_resize_mode() -> str:
     return getattr(SERVICES.config.ui, "nl_image_resize_mode", "None")
 
 
+def default_batch_txt_sentence_keywords() -> str:
+    return ", ".join(SERVICES.config.ui.batch_txt_sentence_keywords)
+
+
+def default_batch_txt_fragment_keywords() -> str:
+    return ", ".join(SERVICES.config.ui.batch_txt_fragment_keywords)
+
+
 def default_shuffle_tags() -> bool:
     return SERVICES.config.nl.shuffle_tags
 
@@ -545,6 +553,34 @@ def batch_add_tag(
         records, current_index, tags_text, nl_text
     )
     result = SERVICES.tag_edit.add_tags(records, add_text, prepend)
+    return presenter.dataset_payload(
+        records, index, result.message, SERVICES.config.caption
+    )
+
+
+def batch_process_txt_rules(
+    records_data: list[dict[str, Any]],
+    current_index: int | None,
+    tags_text: str,
+    nl_text: str,
+    sentence_keywords: str,
+    fragment_keywords: str,
+    modify_json: bool,
+    metadata_location_label: str,
+) -> presenter.DatasetPayload:
+    records = deserialize_records(records_data)
+    if not records:
+        return presenter.empty_dataset_payload("没有图片")
+    index = SERVICES.dataset.sync_current_form(
+        records, current_index, tags_text, nl_text
+    )
+    result = SERVICES.txt_process.process_nl_rules(
+        records,
+        sentence_keywords,
+        fragment_keywords,
+        modify_json=modify_json,
+        metadata_location=metadata_location_value(metadata_location_label),
+    )
     return presenter.dataset_payload(
         records, index, result.message, SERVICES.config.caption
     )

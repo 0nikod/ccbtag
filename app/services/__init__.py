@@ -5,6 +5,7 @@ from app.services.generation_service import GenerateResult, GenerationService, N
 from app.services.save_service import SaveService
 from app.services.tag_category_service import TagCategoryService
 from app.services.tag_edit_service import TagEditResult, TagEditService
+from app.services.txt_process_service import TxtProcessResult, TxtProcessService
 
 __all__ = [
     "AppServices",
@@ -20,5 +21,7 @@ __all__ = [
     "TagCategoryService",
     "TagEditResult",
     "TagEditService",
+    "TxtProcessResult",
+    "TxtProcessService",
     "create_app_services",
 ]

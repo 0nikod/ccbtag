@@ -1,6 +1,11 @@
 import unittest
 
-from app.core.caption import join_caption, parse_caption_text, split_tag_text
+from app.core.caption import (
+    clean_nl_by_rules,
+    join_caption,
+    parse_caption_text,
+    split_tag_text,
+)
 
 
 class CaptionTest(unittest.TestCase):
@@ -26,6 +31,20 @@ class CaptionTest(unittest.TestCase):
 
     def test_split_tag_text_ignores_empty_items(self) -> None:
         self.assertEqual(split_tag_text("1girl, , solo,"), ["1girl", "solo"])
+
+    def test_clean_nl_by_rules_removes_matching_sentences_case_insensitively(self) -> None:
+        self.assertEqual(
+            clean_nl_by_rules("A girl stands. ART STYLE is anime. Tags Include solo."),
+            "A girl stands.",
+        )
+
+    def test_clean_nl_by_rules_removes_fragments_and_last_sentence(self) -> None:
+        self.assertEqual(
+            clean_nl_by_rules(
+                "A girl stands, warm vibe, smiling. Soft atmosphere."
+            ),
+            "A girl stands, smiling.",
+        )
 
 
 if __name__ == "__main__":

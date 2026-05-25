@@ -18,7 +18,7 @@ class RegistryTest(unittest.TestCase):
             def load(self) -> None:
                 self.loaded = True
 
-        registry = ModelRegistry(Path("app/config/models.json"))
+        registry = ModelRegistry(Path("app/config/models.json"), unload_delay=0)
 
         def fake_load_entrypoint(entry: str) -> type[BaseModel]:
             return FakeModel
@@ -41,7 +41,7 @@ class RegistryTest(unittest.TestCase):
             def load(self) -> None:
                 self.loaded = True
 
-        registry = ModelRegistry(Path("app/config/models.json"))
+        registry = ModelRegistry(Path("app/config/models.json"), unload_delay=0)
 
         def fake_load_entrypoint(entry: str) -> type[BaseModel]:
             return FakeModel

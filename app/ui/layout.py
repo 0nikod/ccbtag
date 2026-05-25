@@ -221,6 +221,23 @@ def build_app() -> gr.Blocks:
                                 )
                                 prepend_tag = gr.Checkbox(label="前置添加", value=False)
                                 add_tag_button = gr.Button("批量添加")
+                            gr.Markdown("### 按规则处理 TXT")
+                            gr.Markdown(
+                                "默认直接覆写 txt；未勾选同步修改 JSON 时，会更新 Draft，但不改已保存主 json。"
+                            )
+                            batch_txt_sentence_keywords = gr.Textbox(
+                                label="整句删除关键词，逗号分隔",
+                                value=events.default_batch_txt_sentence_keywords(),
+                            )
+                            batch_txt_fragment_keywords = gr.Textbox(
+                                label="片段/末句删除关键词，逗号分隔",
+                                value=events.default_batch_txt_fragment_keywords(),
+                            )
+                            with gr.Row():
+                                batch_txt_modify_json = gr.Checkbox(
+                                    label="同步修改 JSON", value=False
+                                )
+                                batch_process_txt_button = gr.Button("按规则处理 TXT")
 
         open_outputs = [
             records_state,
@@ -455,6 +472,20 @@ def build_app() -> gr.Blocks:
                 nl_text,
                 add_tag_text,
                 prepend_tag,
+            ],
+            outputs=open_outputs,
+        )
+        batch_process_txt_button.click(
+            events.batch_process_txt_rules,
+            inputs=[
+                records_state,
+                current_index,
+                tags_text,
+                nl_text,
+                batch_txt_sentence_keywords,
+                batch_txt_fragment_keywords,
+                batch_txt_modify_json,
+                metadata_location,
             ],
             outputs=open_outputs,
         )

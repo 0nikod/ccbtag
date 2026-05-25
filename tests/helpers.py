@@ -13,6 +13,7 @@ from app.services.generation_service import GenerationService
 from app.services.save_service import SaveService
 from app.services.tag_category_service import TagCategoryService
 from app.services.tag_edit_service import TagEditService
+from app.services.txt_process_service import TxtProcessService
 
 
 def write_image(path: Path) -> None:
@@ -143,4 +144,5 @@ def build_services(
         batch=BatchService(generation),
         save=SaveService(active_config, dataset),
         tag_edit=TagEditService(active_config.tag, active_config.caption.joiner),
+        txt_process=TxtProcessService(active_config.caption.joiner),
     )

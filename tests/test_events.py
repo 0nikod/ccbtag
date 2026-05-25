@@ -64,6 +64,9 @@ def test_empty_batch_actions_match_open_outputs() -> None:
         )
     ) == 8
     assert len(events.batch_delete_tag([], 0, "", "", "solo")) == 8
+    assert len(
+        events.batch_process_txt_rules([], 0, "", "", "", "", False, "caption_json")
+    ) == 8
 
 
 def test_select_record_returns_editor_payload(tmp_path: Path) -> None:
@@ -289,6 +292,24 @@ def test_default_nl_image_resize_mode_uses_config_ui() -> None:
         events.set_services_for_test(previous)
 
 
+def test_default_batch_txt_keywords_use_config_ui() -> None:
+    previous = events.SERVICES
+    try:
+        config = make_config(
+            ui=replace(
+                previous.config.ui,
+                batch_txt_sentence_keywords=("style", "tags include"),
+                batch_txt_fragment_keywords=("vibe", "atmosphere"),
+            )
+        )
+        events.set_services_for_test(build_services(config=config))
+
+        assert events.default_batch_txt_sentence_keywords() == "style, tags include"
+        assert events.default_batch_txt_fragment_keywords() == "vibe, atmosphere"
+    finally:
+        events.set_services_for_test(previous)
+
+
 def test_autosave_current_updates_state_and_draft(tmp_path: Path) -> None:
     write_image(tmp_path / "0001.png")
     records = serialize_records(scan_dataset(tmp_path))
@@ -370,5 +391,39 @@ def test_generate_tag_keeps_only_selected_categories(tmp_path: Path) -> None:
 
         updated = deserialize_records(payload[0])
         assert updated[0].tags == ["solo"]
+    finally:
+        events.set_services_for_test(previous)
+
+
+def test_batch_process_txt_rules_updates_txt_and_draft(tmp_path: Path) -> None:
+    write_image(tmp_path / "0001.png")
+    records = serialize_records(scan_dataset(tmp_path))
+    previous = events.SERVICES
+    try:
+        events.set_services_for_test(build_services())
+
+        payload = events.batch_process_txt_rules(
+            records,
+            0,
+            "solo",
+            "A girl stands, warm vibe, smiling. Art style is anime.",
+            "art style, tags include",
+            "atmosphere, vibe, art style, artist style, rendering style, aesthetic genre",
+            False,
+            "caption_json",
+        )
+
+        updated = deserialize_records(payload[0])
+        assert updated[0].nl == "A girl stands, smiling."
+        assert payload[7] == "TXT 规则处理完成: 1 张"
+        assert (tmp_path / "0001.txt").read_text(encoding="utf-8").strip() == (
+            "solo. A girl stands, smiling."
+        )
+        metadata = json.loads(
+            (tmp_path / "caption_json" / "0001.caption.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        assert metadata["draft"]["nl"]["text"] == "A girl stands, smiling."
     finally:
         events.set_services_for_test(previous)

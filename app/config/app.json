@@ -27,6 +27,21 @@
     "nl_endpoint": "http://127.0.0.1:8000/v1",
     "nl_model_name": "toriigate-0.5",
     "nl_api_key": "",
-    "nl_image_resize_mode": "1MP"
+    "nl_image_resize_mode": "1MP",
+    "batch_txt_sentence_keywords": [
+      "art style",
+      "tags include",
+      "character name",
+      "character include"
+    ],
+    "batch_txt_fragment_keywords": [
+      "atmosphere",
+      "vibe",
+      "art style",
+      "artist style",
+      "rendering style",
+      "aesthetic genre",
+      "mood"
+    ]
   }
 }

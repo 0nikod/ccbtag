@@ -42,6 +42,15 @@ def valid_payload() -> dict[str, object]:
             "nl_model_name": "toriigate-0.5",
             "nl_api_key": "secret",
             "nl_image_resize_mode": "1MP",
+            "batch_txt_sentence_keywords": ["art style", "tags include"],
+            "batch_txt_fragment_keywords": [
+                "atmosphere",
+                "vibe",
+                "art style",
+                "artist style",
+                "rendering style",
+                "aesthetic genre",
+            ],
         },
     }
 
@@ -63,6 +72,15 @@ def test_load_app_config_reads_app_json(tmp_path: Path) -> None:
     assert config.ui.nl_model_name == "toriigate-0.5"
     assert config.ui.nl_api_key == "secret"
     assert config.ui.nl_image_resize_mode == "1MP"
+    assert config.ui.batch_txt_sentence_keywords == ("art style", "tags include")
+    assert config.ui.batch_txt_fragment_keywords == (
+        "atmosphere",
+        "vibe",
+        "art style",
+        "artist style",
+        "rendering style",
+        "aesthetic genre",
+    )
 
 
 @pytest.mark.parametrize(

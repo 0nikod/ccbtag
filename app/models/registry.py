@@ -27,10 +27,11 @@ class ModelRegistry:
     without changing the interface layer.
     """
 
-    def __init__(self, config_path: str | Path) -> None:
+    def __init__(self, config_path: str | Path, unload_delay: float = 10) -> None:
         self.config_path = Path(config_path)
         self.configs = self._load_configs()
         self._instances: dict[str, BaseModel] = {}
+        self.unload_delay = unload_delay
 
     def list_taggers(self) -> list[ModelConfig]:
         return [config for config in self.configs if config.task == "tag"]
@@ -115,7 +116,7 @@ class ModelRegistry:
             model_id,
             instance.display_name,
         )
-        time.sleep(10)
+        time.sleep(self.unload_delay)
         logger.info(
             "Unloading model: task=%s model_id=%s display_name=%s",
             instance.config.task,

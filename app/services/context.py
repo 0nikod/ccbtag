@@ -11,6 +11,7 @@ from app.services.generation_service import GenerationService
 from app.services.save_service import SaveService
 from app.services.tag_category_service import TagCategoryService
 from app.services.tag_edit_service import TagEditService
+from app.services.txt_process_service import TxtProcessService
 
 
 @dataclass
@@ -22,6 +23,7 @@ class AppServices:
     batch: BatchService
     save: SaveService
     tag_edit: TagEditService
+    txt_process: TxtProcessService
 
 
 def create_app_services(
@@ -45,4 +47,5 @@ def create_app_services(
         batch=BatchService(generation),
         save=SaveService(config, dataset),
         tag_edit=TagEditService(config.tag, config.caption.joiner),
+        txt_process=TxtProcessService(config.caption.joiner),
     )

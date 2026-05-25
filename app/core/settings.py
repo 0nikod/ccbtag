@@ -5,6 +5,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from app.core.caption import (
+    DEFAULT_BATCH_TXT_FRAGMENT_KEYWORDS,
+    DEFAULT_BATCH_TXT_SENTENCE_KEYWORDS,
+)
 from app.core.tag_utils import TagRuleConfig
 
 
@@ -34,6 +38,12 @@ class UiDefaults:
     nl_model_name: str = "toriigate-0.5"
     nl_api_key: str = ""
     nl_image_resize_mode: str = "1MP"
+    batch_txt_sentence_keywords: tuple[str, ...] = (
+        *DEFAULT_BATCH_TXT_SENTENCE_KEYWORDS,
+    )
+    batch_txt_fragment_keywords: tuple[str, ...] = (
+        *DEFAULT_BATCH_TXT_FRAGMENT_KEYWORDS,
+    )
 
 
 @dataclass(frozen=True)
@@ -129,4 +139,18 @@ def _ui_config(data: dict[str, Any]) -> UiDefaults:
         nl_model_name=str(data.get("nl_model_name", "toriigate-0.5")),
         nl_api_key=str(data.get("nl_api_key", "")),
         nl_image_resize_mode=str(data.get("nl_image_resize_mode", "1MP")),
+        batch_txt_sentence_keywords=tuple(
+            str(item)
+            for item in data.get(
+                "batch_txt_sentence_keywords",
+                list(DEFAULT_BATCH_TXT_SENTENCE_KEYWORDS),
+            )
+        ),
+        batch_txt_fragment_keywords=tuple(
+            str(item)
+            for item in data.get(
+                "batch_txt_fragment_keywords",
+                list(DEFAULT_BATCH_TXT_FRAGMENT_KEYWORDS),
+            )
+        ),
     )

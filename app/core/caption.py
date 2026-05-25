@@ -6,6 +6,18 @@ from typing import Iterable
 
 DEFAULT_SEPARATOR = ", "
 DEFAULT_JOINER = ". "
+DEFAULT_BATCH_TXT_SENTENCE_KEYWORDS = (
+    "art style",
+    "tags include",
+)
+DEFAULT_BATCH_TXT_FRAGMENT_KEYWORDS = (
+    "atmosphere",
+    "vibe",
+    "art style",
+    "artist style",
+    "rendering style",
+    "aesthetic genre",
+)
 
 
 @dataclass(frozen=True)
@@ -42,6 +54,37 @@ def clean_nl_text(value: str | None) -> str:
     """Normalize natural-language text without changing user wording."""
 
     return " ".join((value or "").strip().split())
+
+
+def clean_nl_by_rules(
+    value: str | None,
+    sentence_keywords: Iterable[str] | None = None,
+    fragment_keywords: Iterable[str] | None = None,
+) -> str:
+    """Apply batch txt cleanup rules to the NL portion only."""
+
+    sentences = _split_sentences(value)
+    sentence_terms = _normalized_keywords(
+        sentence_keywords or DEFAULT_BATCH_TXT_SENTENCE_KEYWORDS
+    )
+    fragment_terms = _normalized_keywords(
+        fragment_keywords or DEFAULT_BATCH_TXT_FRAGMENT_KEYWORDS
+    )
+
+    filtered_sentences = [
+        sentence
+        for sentence in sentences
+        if not _contains_keyword(sentence, sentence_terms)
+    ]
+    cleaned_sentences = [
+        _remove_keyword_fragments(sentence, fragment_terms)
+        for sentence in filtered_sentences
+    ]
+    cleaned_sentences = [sentence for sentence in cleaned_sentences if sentence]
+
+    if cleaned_sentences and _contains_keyword(cleaned_sentences[-1], fragment_terms):
+        cleaned_sentences.pop()
+    return _join_sentences(cleaned_sentences)
 
 
 def join_caption(
@@ -92,3 +135,35 @@ def _looks_like_tag_block(value: str) -> bool:
     if not normalized:
         return False
     return "," in normalized or " " not in normalized
+
+
+def _split_sentences(value: str | None) -> list[str]:
+    return [clean_nl_text(part) for part in (value or "").split(".") if part.strip()]
+
+
+def _join_sentences(sentences: Iterable[str]) -> str:
+    cleaned = [clean_nl_text(sentence) for sentence in sentences if sentence.strip()]
+    if not cleaned:
+        return ""
+    return ". ".join(cleaned) + "."
+
+
+def _normalized_keywords(keywords: Iterable[str]) -> tuple[str, ...]:
+    return tuple(keyword.strip().lower() for keyword in keywords if keyword.strip())
+
+
+def _contains_keyword(value: str, keywords: Iterable[str]) -> bool:
+    lowered = value.lower()
+    return any(keyword in lowered for keyword in keywords)
+
+
+def _remove_keyword_fragments(sentence: str, keywords: Iterable[str]) -> str:
+    parts = [part.strip() for part in sentence.split(",")]
+    if not parts:
+        return ""
+
+    kept_parts = [parts[0]] if parts[0] else []
+    for fragment in parts[1:]:
+        if fragment and not _contains_keyword(fragment, keywords):
+            kept_parts.append(fragment)
+    return ", ".join(part for part in kept_parts if part)
